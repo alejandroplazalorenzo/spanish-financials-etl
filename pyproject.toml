@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spanish-financials-etl"
+version = "0.1.0"
+description = "ETL from ESEF (xBRL-JSON) annual reports of Spanish listed companies to PostgreSQL, with validation and a guarded NL-to-SQL module."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Alejandro Plaza Lorenzo" }]
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "psycopg[binary]>=3.1",
+    "PyYAML>=6.0",
+    "sqlglot>=30.19,<31",
+    "truststore>=0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.16,<0.17"]
+
+[project.scripts]
+sfetl = "sfetl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "integration: needs a running PostgreSQL (skipped when unavailable)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
