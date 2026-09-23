@@ -1,0 +1,88 @@
+# Held-out questions. Written after the first evaluation run and BEFORE any prompt change;
+# never used to tune the prompt. They measure whether prompt changes made while looking at the
+# failures of eval/questions.yaml generalise.
+
+- id: h01
+  lang: en
+  question: What was Aena's net profit in 2023?
+  reference_sql: |
+    SELECT net_profit FROM company_year
+    WHERE company_name ILIKE '%aena%' AND fiscal_year = 2023
+
+- id: h02
+  lang: en
+  question: Which 3 companies had the highest operating profit in 2023?
+  ordered: true
+  reference_sql: |
+    SELECT company_name FROM company_year
+    WHERE fiscal_year = 2023 AND operating_profit IS NOT NULL
+    ORDER BY operating_profit DESC LIMIT 3
+
+- id: h03
+  lang: en
+  question: How many annual reports are loaded for fiscal year 2023?
+  reference_sql: |
+    SELECT count(*) FROM filing WHERE fiscal_year = 2023
+
+- id: h04
+  lang: en
+  question: What was Acerinox's current ratio in 2024?
+  reference_sql: |
+    SELECT current_ratio FROM company_year_ratios
+    WHERE company_name ILIKE '%acerinox%' AND fiscal_year = 2024
+
+- id: h05
+  lang: en
+  question: Which non-financial companies had total liabilities greater than total assets in 2024?
+  reference_sql: |
+    SELECT company_name FROM company_year
+    WHERE fiscal_year = 2024 AND NOT is_financial AND total_liabilities > total_assets
+
+- id: h06
+  lang: en
+  question: What was the total cash held by banks and insurers at the end of 2024?
+  reference_sql: |
+    SELECT sum(cash) FROM company_year WHERE fiscal_year = 2024 AND is_financial
+
+- id: h07
+  lang: es
+  question: ¿Cuáles fueron los ingresos de Telefónica en 2023?
+  reference_sql: |
+    SELECT revenue FROM company_year
+    WHERE company_name ILIKE '%telefonica%' AND fiscal_year = 2023
+
+- id: h08
+  lang: es
+  question: ¿Qué banco o aseguradora tuvo el mayor beneficio neto en 2024?
+  reference_sql: |
+    SELECT company_name FROM company_year
+    WHERE fiscal_year = 2024 AND is_financial AND net_profit IS NOT NULL
+    ORDER BY net_profit DESC LIMIT 1
+
+- id: h09
+  lang: es
+  question: ¿Cuántas incidencias de validación de la regla missing_core_metric hay en el ejercicio 2023?
+  reference_sql: |
+    SELECT count(*) FROM validation_issue
+    WHERE rule = 'missing_core_metric' AND fiscal_year = 2023
+
+- id: h10
+  lang: es
+  question: ¿Cuál fue el margen neto agregado de las empresas no financieras en 2023?
+  reference_sql: |
+    SELECT net_margin FROM year_aggregate_ratios
+    WHERE fiscal_year = 2023 AND NOT is_financial
+
+- id: h11
+  lang: es
+  question: ¿Qué empresas no financieras tuvieron pérdidas en 2024?
+  reference_sql: |
+    SELECT company_name FROM company_year
+    WHERE fiscal_year = 2024 AND NOT is_financial AND net_profit < 0
+
+- id: h12
+  lang: es
+  question: ¿Cuál fue el ratio de patrimonio neto sobre activos de Mapfre en 2024?
+  reference_sql: |
+    SELECT equity_ratio FROM company_year_ratios
+    WHERE company_name ILIKE '%mapfre%' AND fiscal_year = 2024
