@@ -1,0 +1,86 @@
+{
+  "started_at": "2026-09-23T14:29:28",
+  "fiscal_years": [
+    2023,
+    2024
+  ],
+  "index_filings": 542,
+  "selected_filings": 230,
+  "downloaded_now": 0,
+  "read_from_cache": 230,
+  "companies": 125,
+  "numeric_facts_read": 111260,
+  "metric_values": 2130,
+  "duplicate_groups_resolved": 655,
+  "metric_counts": {
+    "total_assets": 228,
+    "total_equity": 228,
+    "cash": 228,
+    "total_liabilities": 222,
+    "net_profit": 220,
+    "net_profit_parent": 215,
+    "current_assets": 200,
+    "current_liabilities": 200,
+    "operating_profit": 199,
+    "revenue": 190
+  },
+  "financial_companies": 11,
+  "validation": {
+    "balance_identity": {
+      "pass": 209,
+      "flag": 13,
+      "n/a": 8
+    },
+    "missing_core_metric": {
+      "pass": 200,
+      "flag": 30,
+      "n/a": 0
+    },
+    "sign_check": {
+      "pass": 228,
+      "flag": 0,
+      "n/a": 2
+    },
+    "component_bounds": {
+      "pass": 227,
+      "flag": 1,
+      "n/a": 2
+    },
+    "period_consistency": {
+      "pass": 230,
+      "flag": 0,
+      "n/a": 0
+    },
+    "non_eur_unit": {
+      "pass": 228,
+      "flag": 2,
+      "n/a": 0
+    },
+    "inconsistent_duplicate": {
+      "pass": 230,
+      "flag": 0,
+      "n/a": 0
+    },
+    "unique_value": {
+      "pass": 230,
+      "flag": 0,
+      "n/a": 0
+    }
+  },
+  "issues_by_severity": {
+    "warning": 54,
+    "error": 14
+  },
+  "load": {
+    "companies": 125,
+    "filings": 230,
+    "facts": 2130,
+    "issues": 68
+  },
+  "seconds": {
+    "extract": 0.1,
+    "transform": 23.5,
+    "validate": 0.0,
+    "load": 1.4
+  }
+}
