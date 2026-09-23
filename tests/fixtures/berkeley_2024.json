@@ -1,0 +1,336 @@
+{
+ "documentInfo": {
+  "documentType": "https://xbrl.org/2021/xbrl-json",
+  "features": {
+   "xbrl:canonicalValues": true
+  },
+  "namespaces": {
+   "bky": "http://www.berkeleyenergia.com/xbrl/2024",
+   "ifrs-full": "https://xbrl.ifrs.org/taxonomy/2022-03-24/ifrs-full",
+   "iso4217": "http://www.xbrl.org/2003/iso4217",
+   "scheme": "http://standards.iso.org/iso/17442",
+   "xbrl": "https://xbrl.org/2021",
+   "xbrli": "http://www.xbrl.org/2003/instance"
+  },
+  "taxonomy": [
+   "http://www.berkeleyenergia.com/xbrl/2024/213800JX3V4TPO7TCJ08-2024-06-30.xsd"
+  ]
+ },
+ "facts": {
+  "Tag89": {
+   "value": "The principal activities of the Consolidated Entity during the year consisted of mineral exploration and development.",
+   "dimensions": {
+    "concept": "ifrs-full:DescriptionOfNatureOfEntitysOperationsAndPrincipalActivities",
+    "language": "en",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00"
+   }
+  },
+  "Tag8": {
+   "value": "-3261000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLoss",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag22": {
+   "value": "-1373000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLoss",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag223": {
+   "value": "77345000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashAndCashEquivalents",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag239": {
+   "value": "78776000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashAndCashEquivalents",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag225": {
+   "value": "77835000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CurrentAssets",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag241": {
+   "value": "79656000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CurrentAssets",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag229": {
+   "value": "87384000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Assets",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag245": {
+   "value": "89357000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Assets",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag232": {
+   "value": "2480000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CurrentLiabilities",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag249": {
+   "value": "2041000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CurrentLiabilities",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag233": {
+   "value": "2480000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Liabilities",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag250": {
+   "value": "2041000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Liabilities",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag237": {
+   "value": "84904000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag254": {
+   "value": "87316000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag41": {
+   "value": "206404000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "ifrs-full:ComponentsOfEquityAxis": "ifrs-full:IssuedCapitalMember",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag45": {
+   "value": "87316000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag67": {
+   "value": "-3261000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLoss",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00",
+    "ifrs-full:ComponentsOfEquityAxis": "ifrs-full:RetainedEarningsMember",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag66": {
+   "value": "-3261000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLoss",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag36": {
+   "value": "206404000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "ifrs-full:ComponentsOfEquityAxis": "ifrs-full:IssuedCapitalMember",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag37": {
+   "value": "1286000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "ifrs-full:ComponentsOfEquityAxis": "ifrs-full:ReserveOfSharebasedPaymentsMember",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag38": {
+   "value": "-1909000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "ifrs-full:ComponentsOfEquityAxis": "ifrs-full:ReserveOfExchangeDifferencesOnTranslationMember",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag40": {
+   "value": "84904000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag63": {
+   "value": "87633000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag46": {
+   "value": "-1373000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLoss",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
+    "ifrs-full:ComponentsOfEquityAxis": "ifrs-full:RetainedEarningsMember",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag47": {
+   "value": "-1373000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLoss",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag70": {
+   "value": "87316000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:Equity",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag83": {
+   "value": "78776000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashAndCashEquivalents",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag84": {
+   "value": "79943000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashAndCashEquivalents",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag76": {
+   "value": "77345000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashAndCashEquivalents",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag82": {
+   "value": "78776000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashAndCashEquivalents",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  }
+ }
+}
