@@ -23,3 +23,12 @@ def test_duplicate_versions_are_rejected(tmp_path: Path) -> None:
     (tmp_path / "001_b.sql").write_text("SELECT 1;")
     with pytest.raises(MigrationError):
         discover(tmp_path)
+
+
+def test_checksum_ignores_line_endings(tmp_path: Path) -> None:
+    lf, crlf = tmp_path / "lf", tmp_path / "crlf"
+    lf.mkdir()
+    crlf.mkdir()
+    (lf / "001_a.sql").write_bytes(b"CREATE TABLE t (i int);\nSELECT 1;\n")
+    (crlf / "001_a.sql").write_bytes(b"CREATE TABLE t (i int);\r\nSELECT 1;\r\n")
+    assert discover(lf)[0].checksum == discover(crlf)[0].checksum

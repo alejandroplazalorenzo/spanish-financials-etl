@@ -34,7 +34,9 @@ class Migration:
 
     @property
     def checksum(self) -> str:
-        return hashlib.sha256(self.path.read_bytes()).hexdigest()
+        # Hash with normalised line endings: a Windows checkout (CRLF) and a Linux one (LF)
+        # of the same migration must not look like an edited file.
+        return hashlib.sha256(self.path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 class MigrationError(RuntimeError):
