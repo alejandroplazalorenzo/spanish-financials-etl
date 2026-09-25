@@ -32,3 +32,11 @@ def test_checksum_ignores_line_endings(tmp_path: Path) -> None:
     (lf / "001_a.sql").write_bytes(b"CREATE TABLE t (i int);\nSELECT 1;\n")
     (crlf / "001_a.sql").write_bytes(b"CREATE TABLE t (i int);\r\nSELECT 1;\r\n")
     assert discover(lf)[0].checksum == discover(crlf)[0].checksum
+
+
+def test_every_migration_after_the_first_three_explains_why() -> None:
+    for migration in discover():
+        if int(migration.version) >= 4:
+            header = migration.sql_text.split("\n\n", 1)[0]
+            assert header.startswith(f"-- {migration.version}:"), migration.path.name
+            assert "Why" in migration.sql_text[:1500], migration.path.name
