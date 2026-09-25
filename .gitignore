@@ -22,3 +22,6 @@ data/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Database dumps (sfetl backup)
+backups/
