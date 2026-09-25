@@ -12,6 +12,7 @@
   "error_count": 0,
   "warning_count": 0,
   "inconsistency_count": 0,
+  "report_url": "/213800JX3V4TPO7TCJ08/2024-06-30/ESEF/ES/0/213800JX3V4TPO7TCJ08-2024-06-30-en/reports/213800JX3V4TPO7TCJ08-2024-06-30-en.xhtml",
   "fixture": "berkeley_2024.json"
  },
  {
@@ -27,7 +28,24 @@
   "error_count": 0,
   "warning_count": 0,
   "inconsistency_count": 0,
+  "report_url": "/549300LHK07F2CHV4X31/2024-12-31/ESEF/ES/0/549300LHK07F2CHV4X31-2024-12-31-0-es/reports/549300LHK07F2CHV4X31-2024-12-31-0-es.xhtml",
   "fixture": "endesa_2024.json"
+ },
+ {
+  "filing_id": 18555,
+  "fxo_id": "549300N94L4D5NDBFG97-2024-12-31-ESEF-ES-0",
+  "lei": "549300N94L4D5NDBFG97",
+  "entity_name": "PROSEGUR COMPAÑIA DE SEGURIDAD, S.A.",
+  "period_end": "2024-12-31",
+  "date_added": "2025-05-08T11:09:43.820800",
+  "json_url": "/549300N94L4D5NDBFG97/2024-12-31/ESEF/ES/0/549300N94L4D5NDBFG97-20241231-es.json",
+  "package_url": "/549300N94L4D5NDBFG97/2024-12-31/ESEF/ES/0/549300N94L4D5NDBFG97-20241231-es.zip",
+  "viewer_url": "/549300N94L4D5NDBFG97/2024-12-31/ESEF/ES/0/549300N94L4D5NDBFG97-20241231-es/reports/ixbrlviewer.html",
+  "error_count": 0,
+  "warning_count": 2,
+  "inconsistency_count": 0,
+  "report_url": "/549300N94L4D5NDBFG97/2024-12-31/ESEF/ES/0/549300N94L4D5NDBFG97-20241231-es/reports/549300N94L4D5NDBFG97-20241231-es.xhtml",
+  "fixture": "prosegur_2024.json"
  },
  {
   "filing_id": 18808,
@@ -42,7 +60,24 @@
   "error_count": 0,
   "warning_count": 0,
   "inconsistency_count": 0,
+  "report_url": "/549300TTCXZOGZM2EY83/2025-01-31/ESEF/ES/0/549300TTCXZOGZM2EY83-20250131-0-en/reports/549300TTCXZOGZM2EY83-20250131-0-en.xhtml",
   "fixture": "inditex_fy2024.json"
+ },
+ {
+  "filing_id": 18862,
+  "fxo_id": "9598005HY5DEFPU2SM35-2024-12-31-ESEF-ES-0",
+  "lei": "9598005HY5DEFPU2SM35",
+  "entity_name": "PROSEGUR CASH, S.A.",
+  "period_end": "2024-12-31",
+  "date_added": "2025-05-08T11:24:55.143867",
+  "json_url": "/9598005HY5DEFPU2SM35/2024-12-31/ESEF/ES/0/9598005HY5DEFPU2SM35-20241231-es.json",
+  "package_url": "/9598005HY5DEFPU2SM35/2024-12-31/ESEF/ES/0/9598005HY5DEFPU2SM35-20241231-es.zip",
+  "viewer_url": "/9598005HY5DEFPU2SM35/2024-12-31/ESEF/ES/0/9598005HY5DEFPU2SM35-20241231-es/reports/ixbrlviewer.html",
+  "error_count": 0,
+  "warning_count": 1,
+  "inconsistency_count": 0,
+  "report_url": "/9598005HY5DEFPU2SM35/2024-12-31/ESEF/ES/0/9598005HY5DEFPU2SM35-20241231-es/reports/9598005HY5DEFPU2SM35-20241231-es.xhtml",
+  "fixture": "prosegur_cash_2024.json"
  },
  {
   "filing_id": 18764,
@@ -57,6 +92,7 @@
   "error_count": 0,
   "warning_count": 0,
   "inconsistency_count": 0,
+  "report_url": "/959800GZESQUFLUH5402/2024-12-31/ESEF/ES/0/959800GZESQUFLUH5402-2024-12-31-es/reports/959800GZESQUFLUH5402-2024-12-31-es.xhtml",
   "fixture": "amper_2024.json"
  },
  {
@@ -72,6 +108,7 @@
   "error_count": 0,
   "warning_count": 0,
   "inconsistency_count": 0,
+  "report_url": "/959800RGBUGJA3UVZZ88/2024-12-31/ESEF/ES/0/959800RGBUGJA3UVZZ88-2024-12-31-es/reports/REALIABUSINESS_InformeadicionalauditoríaCCAAConsolidadas2024_(IN25-1392)-2025-12-31-0-es.xhtml",
   "fixture": "realia_2024.json"
  },
  {
@@ -87,6 +124,7 @@
   "error_count": 0,
   "warning_count": 2,
   "inconsistency_count": 0,
+  "report_url": "/VWMYAEQSTOPNV0SUGU82/2024-12-31/ESEF/ES/0/VWMYAEQSTOPNV0SUGU82-20241231-es/reports/VWMYAEQSTOPNV0SUGU82-20241231-0-es.xhtml",
   "fixture": "bankinter_2024.json"
  }
 ]

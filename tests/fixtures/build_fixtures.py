@@ -2,7 +2,9 @@
 
 Run after `sfetl run` has cached the filings:  python tests/fixtures/build_fixtures.py
 Each fixture keeps the documentInfo, every fact of the concepts the pipeline reads (all
-periods, a few dimensioned ones) and one text block, so tests exercise real tagging.
+periods, a few dimensioned ones), the two parent-name text facts, a few company-extension facts
+with a current-year EUR value (for the unmapped-concepts report) and one text block, so tests
+exercise real tagging.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from sfetl.concepts import FINANCIAL_MARKERS, mapped_concepts
+from sfetl.concepts import FINANCIAL_MARKERS, PARENT_CONCEPTS, is_extension, mapped_concepts
 from sfetl.extract import load_selection, raw_path, read_filing
 from sfetl.oim import parse_period
 
@@ -23,6 +25,7 @@ EXTRA_CONCEPTS = {
 }
 MAX_DIMENSIONED_CURRENT = 3  # per concept, at the filing's period end
 MAX_DIMENSIONED_OTHER = 1  # per concept, at any other date
+MAX_EXTENSIONS = 6  # undimensioned EUR extension facts at the period end
 TEXT_LIMIT = 200
 
 WANTED = {
@@ -30,16 +33,20 @@ WANTED = {
     "VWMYAEQSTOPNV0SUGU82-2024-12-31-ESEF-ES-0": "bankinter_2024.json",
     "213800JX3V4TPO7TCJ08-2024-06-30-ESEF-ES-0": "berkeley_2024.json",
     "549300TTCXZOGZM2EY83-2025-01-31-ESEF-ES-0": "inditex_fy2024.json",
+    "549300N94L4D5NDBFG97-2024-12-31-ESEF-ES-0": "prosegur_2024.json",
+    "9598005HY5DEFPU2SM35-2024-12-31-ESEF-ES-0": "prosegur_cash_2024.json",
 }
 BY_NAME = {"AMPER": "amper_2024.json", "REALIA": "realia_2024.json"}
 
 
 def trim(report: dict[str, Any], period_end: str) -> dict[str, Any]:
-    keep_concepts = mapped_concepts() | FINANCIAL_MARKERS | EXTRA_CONCEPTS
+    keep_concepts = mapped_concepts() | FINANCIAL_MARKERS | EXTRA_CONCEPTS | set(PARENT_CONCEPTS)
+    namespaces = report.get("documentInfo", {}).get("namespaces", {})
     dimensioned: Counter[tuple[str, bool]] = Counter()
     current_end = parse_period(period_end).end
     facts: dict[str, Any] = {}
     text_kept = False
+    extensions = 0
     for fact_id, fact in report["facts"].items():
         dims = fact.get("dimensions", {})
         concept = dims.get("concept", "")
@@ -52,6 +59,16 @@ def trim(report: dict[str, Any], period_end: str) -> dict[str, Any]:
                     continue
                 dimensioned[(concept, is_current)] += 1
             facts[fact_id] = fact
+        elif (
+            extensions < MAX_EXTENSIONS
+            and not has_dims
+            and dims.get("unit") == "iso4217:EUR"
+            and is_extension(concept, namespaces)
+            and fact.get("value") is not None
+            and parse_period(dims["period"]).end == current_end
+        ):
+            facts[fact_id] = fact
+            extensions += 1
         elif not text_kept and "unit" not in dims and isinstance(fact.get("value"), str):
             if len(fact["value"]) > 50:
                 facts[fact_id] = {**fact, "value": fact["value"][:TEXT_LIMIT]}

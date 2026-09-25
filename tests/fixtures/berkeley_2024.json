@@ -17,6 +17,15 @@
   ]
  },
  "facts": {
+  "Tag87": {
+   "value": "Berkeley Energia Limited",
+   "dimensions": {
+    "concept": "ifrs-full:NameOfParentEntity",
+    "language": "en",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00"
+   }
+  },
   "Tag89": {
    "value": "The principal activities of the Consolidated Entity during the year consisted of mineral exploration and development.",
    "dimensions": {
@@ -24,6 +33,46 @@
     "language": "en",
     "entity": "scheme:213800JX3V4TPO7TCJ08",
     "period": "2023-07-01T00:00:00/2024-07-01T00:00:00"
+   }
+  },
+  "Tag7": {
+   "value": "-3261000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLossBeforeTax",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag20": {
+   "value": "-1373000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:ProfitLossBeforeTax",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag9": {
+   "value": "0.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:IncomeTaxExpenseContinuingOperations",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag21": {
+   "value": "0.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:IncomeTaxExpenseContinuingOperations",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
    }
   },
   "Tag8": {
@@ -44,6 +93,26 @@
     "entity": "scheme:213800JX3V4TPO7TCJ08",
     "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
     "unit": "iso4217:AUD"
+   }
+  },
+  "Tag93": {
+   "value": "-0.0073",
+   "decimals": 4,
+   "dimensions": {
+    "concept": "ifrs-full:BasicEarningsLossPerShare",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00",
+    "unit": "iso4217:AUD/xbrli:shares"
+   }
+  },
+  "Tag94": {
+   "value": "-0.0031",
+   "decimals": 4,
+   "dimensions": {
+    "concept": "ifrs-full:BasicEarningsLossPerShare",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
+    "unit": "iso4217:AUD/xbrli:shares"
    }
   },
   "Tag223": {
@@ -86,6 +155,46 @@
     "unit": "iso4217:AUD"
    }
   },
+  "Tag226": {
+   "value": "9444000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:PropertyPlantAndEquipment",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag242": {
+   "value": "9594000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:PropertyPlantAndEquipment",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag228": {
+   "value": "9549000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:NoncurrentAssets",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag244": {
+   "value": "9701000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:NoncurrentAssets",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
   "Tag229": {
    "value": "87384000.0",
    "decimals": -3,
@@ -101,6 +210,26 @@
    "decimals": -3,
    "dimensions": {
     "concept": "ifrs-full:Assets",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag230": {
+   "value": "1916000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:TradeAndOtherCurrentPayables",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag246": {
+   "value": "1221000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:TradeAndOtherCurrentPayables",
     "entity": "scheme:213800JX3V4TPO7TCJ08",
     "period": "2023-07-01T00:00:00",
     "unit": "iso4217:AUD"
@@ -141,6 +270,26 @@
    "decimals": -3,
    "dimensions": {
     "concept": "ifrs-full:Liabilities",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag235": {
+   "value": "206404000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:IssuedCapital",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag252": {
+   "value": "206404000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:IssuedCapital",
     "entity": "scheme:213800JX3V4TPO7TCJ08",
     "period": "2023-07-01T00:00:00",
     "unit": "iso4217:AUD"
@@ -292,6 +441,26 @@
     "unit": "iso4217:AUD"
    }
   },
+  "Tag73": {
+   "value": "-1497000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashFlowsFromUsedInOperatingActivities",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
+  "Tag79": {
+   "value": "-4139000.0",
+   "decimals": -3,
+   "dimensions": {
+    "concept": "ifrs-full:CashFlowsFromUsedInOperatingActivities",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2022-07-01T00:00:00/2023-07-01T00:00:00",
+    "unit": "iso4217:AUD"
+   }
+  },
   "Tag83": {
    "value": "78776000.0",
    "decimals": -3,
@@ -330,6 +499,15 @@
     "entity": "scheme:213800JX3V4TPO7TCJ08",
     "period": "2023-07-01T00:00:00",
     "unit": "iso4217:AUD"
+   }
+  },
+  "Tag213": {
+   "value": "Berkeley Energia Limited",
+   "dimensions": {
+    "concept": "ifrs-full:NameOfUltimateParentOfGroup",
+    "language": "en",
+    "entity": "scheme:213800JX3V4TPO7TCJ08",
+    "period": "2023-07-01T00:00:00/2024-07-01T00:00:00"
    }
   }
  }

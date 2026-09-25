@@ -1,0 +1,100 @@
+# Golden figures, compared with v_financial after every load (src/sfetl/validate_db.py).
+#
+# Each value was read from the HUMAN-READABLE statement in the company's published XHTML annual
+# report on filings.xbrl.org (the `report_url` of the filing), not from the xBRL-JSON the
+# pipeline loads: the printed line label, the printed number and the scale stated in the
+# table heading ("Millones de euros", "Miles de euros"...). expected_eur = printed x scale; the
+# check allows half a printed unit.
+#
+# Transcribed on 23-09-2026 while rebuilding this repository (text extracted from the XHTML and
+# read line by line); the author should re-check them against the rendered reports.
+
+- company: ENDESA SA
+  lei: 549300LHK07F2CHV4X31
+  fiscal_year: 2024
+  metric: revenue
+  statement: "Estados del Resultado Consolidados, line 'Ingresos por Ventas y Prestaciones de Servicios' (the 'INGRESOS' total above it, 21.307, includes other operating income)"
+  printed: "20.935"
+  scale: 1000000
+  expected_eur: 20935000000
+  source: https://filings.xbrl.org/549300LHK07F2CHV4X31/2024-12-31/ESEF/ES/0/549300LHK07F2CHV4X31-2024-12-31-0-es/reports/549300LHK07F2CHV4X31-2024-12-31-0-es.xhtml
+
+- company: ENDESA SA
+  lei: 549300LHK07F2CHV4X31
+  fiscal_year: 2024
+  metric: total_assets
+  statement: "Estados de Situación Financiera Consolidados, line 'TOTAL ACTIVO', 31 de diciembre de 2024, Millones de Euros"
+  printed: "37.345"
+  scale: 1000000
+  expected_eur: 37345000000
+  source: https://filings.xbrl.org/549300LHK07F2CHV4X31/2024-12-31/ESEF/ES/0/549300LHK07F2CHV4X31-2024-12-31-0-es/reports/549300LHK07F2CHV4X31-2024-12-31-0-es.xhtml
+
+- company: INDUSTRIA DE DISEÑO TEXTIL, S.A.
+  lei: 549300TTCXZOGZM2EY83
+  fiscal_year: 2024
+  metric: revenue
+  statement: "Consolidated income statement (year to 31 January 2025), line 'Net sales', amounts in millions of euros"
+  printed: "38,632"
+  scale: 1000000
+  expected_eur: 38632000000
+  source: https://filings.xbrl.org/549300TTCXZOGZM2EY83/2025-01-31/ESEF/ES/0/549300TTCXZOGZM2EY83-20250131-0-en/reports/549300TTCXZOGZM2EY83-20250131-0-en.xhtml
+
+- company: INDUSTRIA DE DISEÑO TEXTIL, S.A.
+  lei: 549300TTCXZOGZM2EY83
+  fiscal_year: 2024
+  metric: net_profit
+  statement: "Consolidated income statement (year to 31 January 2025), line 'NET PROFIT', amounts in millions of euros"
+  printed: "5,877"
+  scale: 1000000
+  expected_eur: 5877000000
+  source: https://filings.xbrl.org/549300TTCXZOGZM2EY83/2025-01-31/ESEF/ES/0/549300TTCXZOGZM2EY83-20250131-0-en/reports/549300TTCXZOGZM2EY83-20250131-0-en.xhtml
+
+- company: IBERDROLA SA
+  lei: 5QK37QC7NWOJ8D7WVQ45
+  fiscal_year: 2024
+  metric: total_equity
+  statement: "Estado consolidado de situación financiera, line 'Total patrimonio neto', 31.12.2024, millones de euros"
+  printed: "61.051"
+  scale: 1000000
+  expected_eur: 61051000000
+  source: https://filings.xbrl.org/5QK37QC7NWOJ8D7WVQ45/2024-12-31/ESEF/ES/0/5QK37QC7NWOJ8D7WVQ45-20241231-es/reports/5QK37QC7NWOJ8D7WVQ45-20241231-es.xhtml
+
+- company: BANKINTER SOCIEDAD ANONIMA
+  lei: VWMYAEQSTOPNV0SUGU82
+  fiscal_year: 2024
+  metric: total_assets
+  statement: "Balances consolidados, line 'TOTAL ACTIVO', 31/12/2024, Miles de euros"
+  printed: "121.971.823"
+  scale: 1000
+  expected_eur: 121971823000
+  source: https://filings.xbrl.org/VWMYAEQSTOPNV0SUGU82/2024-12-31/ESEF/ES/0/VWMYAEQSTOPNV0SUGU82-20241231-es/reports/VWMYAEQSTOPNV0SUGU82-20241231-0-es.xhtml
+
+- company: TELEFONICA SA
+  lei: 549300EEJH4FEPDBBR25
+  fiscal_year: 2023
+  metric: cash
+  statement: "Consolidated statements of financial position at December 31, line 'Cash and cash equivalents', 2023, millions of euros"
+  printed: "7,151"
+  scale: 1000000
+  expected_eur: 7151000000
+  source: https://filings.xbrl.org/549300EEJH4FEPDBBR25/2023-12-31/ESEF/ES/0/549300EEJH4FEPDBBR25-20231231-en/reports/549300EEJH4FEPDBBR25-20231231-en.xhtml
+
+- company: PROSEGUR CASH, S.A.
+  lei: 9598005HY5DEFPU2SM35
+  fiscal_year: 2024
+  metric: revenue
+  statement: "Cuentas de resultados consolidadas, line 'Ingresos ordinarios', 2024, en miles de euros"
+  printed: "2.089.879"
+  scale: 1000
+  expected_eur: 2089879000
+  source: https://filings.xbrl.org/9598005HY5DEFPU2SM35/2024-12-31/ESEF/ES/0/9598005HY5DEFPU2SM35-20241231-es/reports/9598005HY5DEFPU2SM35-20241231-es.xhtml
+
+- company: PROSEGUR CASH, S.A.
+  lei: 9598005HY5DEFPU2SM35
+  fiscal_year: 2024
+  metric: net_profit
+  statement: "Cuentas de resultados consolidadas, line 'Resultado consolidado del ejercicio', 2024, en miles de euros"
+  printed: "91.046"
+  scale: 1000
+  expected_eur: 91046000
+  source: https://filings.xbrl.org/9598005HY5DEFPU2SM35/2024-12-31/ESEF/ES/0/9598005HY5DEFPU2SM35-20241231-es/reports/9598005HY5DEFPU2SM35-20241231-es.xhtml

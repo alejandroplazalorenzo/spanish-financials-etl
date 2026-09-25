@@ -46,6 +46,7 @@ class FilingMeta:
     error_count: int
     warning_count: int
     inconsistency_count: int
+    report_url: str | None = None  # the human-readable XHTML report (golden figures come from it)
 
     @property
     def fiscal_year(self) -> int:
@@ -103,12 +104,13 @@ def parse_index_page(payload: dict[str, Any]) -> list[FilingMeta]:
                 error_count=int(attrs.get("error_count") or 0),
                 warning_count=int(attrs.get("warning_count") or 0),
                 inconsistency_count=int(attrs.get("inconsistency_count") or 0),
+                report_url=attrs.get("report_url"),
             )
         )
     return rows
 
 
-def _session() -> requests.Session:
+def http_session() -> requests.Session:
     # Verify TLS against the operating-system trust store (works behind corporate proxies
     # or antivirus TLS inspection, where the bundled certifi roots do not).
     truststore.inject_into_ssl()
@@ -140,7 +142,7 @@ def fetch_index(
     if cache_file.is_file() and not refresh:
         pages = json.loads(cache_file.read_text(encoding="utf-8"))
     else:
-        session = _session()
+        session = http_session()
         pages = []
         page = 1
         while True:
@@ -223,7 +225,7 @@ def download_filing(
     if target.is_file():
         return target, False
     target.parent.mkdir(parents=True, exist_ok=True)
-    session = session or _session()
+    session = session or http_session()
     url = FILINGS_BASE_URL + meta.json_url
     with session.get(url, timeout=180, stream=True, headers={"Accept-Encoding": "gzip"}) as resp:
         resp.raise_for_status()

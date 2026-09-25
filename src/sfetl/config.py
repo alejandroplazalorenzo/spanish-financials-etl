@@ -10,6 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 MIGRATIONS_DIR = PROJECT_ROOT / "db" / "migrations"
 REPORTS_DIR = PROJECT_ROOT / "reports"
+GOLDEN_FILE = PROJECT_ROOT / "golden" / "golden_figures.yaml"
 
 FILINGS_BASE_URL = "https://filings.xbrl.org"
 
@@ -69,6 +70,24 @@ def reader_db() -> DbSettings:
     )
 
 
+def assistant_db() -> DbSettings:
+    """The assistant's own role: SELECT on curated views + writes to the assistant schema."""
+    load_dotenv()
+    owner = owner_db()
+    return DbSettings(
+        host=owner.host,
+        port=owner.port,
+        dbname=owner.dbname,
+        user="sfetl_assistant",  # created by db/migrations/008_assistant_role.sql
+        password=os.environ.get("SFETL_ASSISTANT_PASSWORD", ""),
+    )
+
+
+def llm_provider() -> str:
+    load_dotenv()
+    return os.environ.get("SFETL_LLM_PROVIDER", "ollama").strip().lower()
+
+
 def ollama_url() -> str:
     load_dotenv()
     return os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
@@ -76,9 +95,25 @@ def ollama_url() -> str:
 
 def ollama_model() -> str:
     load_dotenv()
-    return os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
+    return os.environ.get("OLLAMA_MODEL", "qwen3:4b")
+
+
+def gemini_model() -> str:
+    load_dotenv()
+    return os.environ.get("GEMINI_MODEL", "gemini-flash-lite-latest")
+
+
+def gemini_api_key() -> str:
+    load_dotenv()
+    return os.environ.get("GEMINI_API_KEY", "")
+
+
+def env_list(name: str) -> frozenset[str]:
+    """Comma-separated list from the environment (empty when unset)."""
+    load_dotenv()
+    return frozenset(v.strip() for v in os.environ.get(name, "").split(",") if v.strip())
 
 
 def user_agent() -> str:
     load_dotenv()
-    return os.environ.get("SFETL_USER_AGENT", "spanish-financials-etl/0.1 (portfolio project)")
+    return os.environ.get("SFETL_USER_AGENT", "spanish-financials-etl/0.2 (portfolio project)")

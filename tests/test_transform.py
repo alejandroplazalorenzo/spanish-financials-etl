@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from sfetl.concepts import DERIVED_LIABILITIES_CONCEPT, METRICS
+from sfetl.concepts import DERIVED_LIABILITIES_CONCEPT, METRICS_BY_CODE
 from sfetl.oim import Fact, Period, iter_numeric_facts
 from sfetl.transform import (
     consistent,
@@ -11,6 +11,7 @@ from sfetl.transform import (
     matches_fiscal_year,
     pick_concept_value,
     resolve_duplicates,
+    select_metric,
 )
 
 FY2024 = Period(date(2024, 1, 1), date(2024, 12, 31))
@@ -29,12 +30,6 @@ def fact(
 
 
 # --- concept mapping -------------------------------------------------------------------------
-
-
-def test_every_metric_maps_to_ifrs_full_concepts_only() -> None:
-    for spec in METRICS:
-        assert spec.concepts
-        assert all(c.startswith("ifrs-full:") for c in spec.concepts)
 
 
 def test_endesa_metrics_come_from_the_expected_concepts(transformed) -> None:
@@ -157,7 +152,7 @@ def test_non_eur_filing_loads_nothing_and_records_the_unit(transformed) -> None:
     result = transformed("berkeley_2024.json")
     assert result.metrics == {}
     units = {o.detail.rsplit(" ", 1)[-1] for o in result.observations if o.rule == "non_eur_unit"}
-    assert units == {"iso4217:AUD"}
+    assert units == {"iso4217:AUD", "iso4217:AUD/xbrli:shares"}  # amounts and EPS
 
 
 # --- duplicates ------------------------------------------------------------------------------
@@ -201,3 +196,84 @@ def test_consistency_uses_the_lower_precision() -> None:
     assert consistent(fact("a", "1234000", decimals=-3), fact("b", "1235000", decimals=-3)) is False
     assert consistent(fact("a", "1234000", decimals=-3), fact("b", "1234400", decimals=-2)) is True
     assert consistent(fact("a", "1000000", decimals=-6), fact("b", "1234400", decimals=-3)) is True
+
+
+# --- nil facts: "not available" is neither a value nor zero -----------------------------------
+
+
+def nil_fact(fid: str, concept: str = "ifrs-full:Revenue") -> Fact:
+    return Fact(fid, concept, None, "iso4217:EUR", None, FY2024, {}, is_nil=True)
+
+
+def test_a_value_beats_a_nil_duplicate() -> None:
+    chosen, ok = resolve_duplicates([nil_fact("n"), fact("v", "100")])
+    assert chosen.fact_id == "v" and ok
+
+
+def test_only_nil_gives_a_nil_metric_not_zero() -> None:
+    spec = METRICS_BY_CODE["revenue"]
+    value = select_metric(spec, {"ifrs-full:Revenue": [nil_fact("n")]}, date(2024, 12, 31), [])
+    assert value is not None and value.is_nil and value.value is None
+
+
+def test_second_concept_with_a_value_beats_a_nil_first_concept() -> None:
+    spec = METRICS_BY_CODE["revenue"]
+    grouped = {
+        "ifrs-full:Revenue": [nil_fact("n")],
+        "ifrs-full:RevenueFromContractsWithCustomers": [
+            fact("v", "7", concept="ifrs-full:RevenueFromContractsWithCustomers")
+        ],
+    }
+    value = select_metric(spec, grouped, date(2024, 12, 31), [])
+    assert value is not None and not value.is_nil and value.value == Decimal("7")
+
+
+# --- catalogue units ---------------------------------------------------------------------------
+
+
+def test_earnings_per_share_is_read_in_eur_per_share(transformed) -> None:
+    eps = transformed("endesa_2024.json").metrics["basic_eps"]
+    assert Decimal("1.5") < eps.value < Decimal("2.5")  # EUR per share, not EUR
+
+
+def test_forty_metrics_are_read_from_a_full_filing(transformed) -> None:
+    assert len(transformed("endesa_2024.json").metrics) >= 30
+
+
+# --- extensions and ownership ------------------------------------------------------------------
+
+
+def test_extension_concepts_are_reported_not_mapped(transformed) -> None:
+    result = transformed("endesa_2024.json")
+    assert result.unmapped, "fixture keeps a few current-year EUR extension facts"
+    assert all(not u.concept.startswith("ifrs-full:") for u in result.unmapped)
+    assert all(u.value is not None for u in result.unmapped)
+
+
+def test_revenue_hint_is_only_a_hint() -> None:
+    from sfetl.transform import UnmappedFact
+
+    assert UnmappedFact("rep:Sales", "duration", Decimal(1), -6).looks_like_revenue
+    assert not UnmappedFact("rep:Sales", "instant", Decimal(1), -6).looks_like_revenue
+    assert not UnmappedFact("x:OtherReserves", "duration", Decimal(1), -6).looks_like_revenue
+
+
+def test_parent_statements_are_extracted(transformed) -> None:
+    parents = {p.relation: p for p in transformed("prosegur_cash_2024.json").parents}
+    assert set(parents) == {"direct", "ultimate"}
+    assert parents["direct"].status == "named"
+    assert parents["direct"].name is not None and "Prosegur" in parents["direct"].name
+
+
+def test_revenue_hint_is_narrow() -> None:
+    from sfetl.transform import UnmappedFact
+
+    def hint(concept: str) -> bool:
+        return UnmappedFact(concept, "duration", Decimal(1), -3).looks_like_revenue
+
+    assert hint("x:RevenuesNotIncludingFinancialIncome")
+    assert hint("x:ImporteNetoDeLaCifraDeNegocios")
+    assert hint("x:Ingresos")
+    assert not hint("x:ActivosNoCorrientesMantenidosParaLaVenta")  # held for sale
+    assert not hint("x:ProceedsFromSalesOfInvestmentProperty")
+    assert not hint("x:InterestRevenueForInsuranceAssets")

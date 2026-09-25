@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from sfetl.oim import iter_numeric_facts, parse_period
+from sfetl.oim import iter_numeric_facts, iter_text_facts, parse_period
 
 
 def test_instant_at_midnight_belongs_to_previous_day() -> None:
@@ -21,6 +21,12 @@ def test_duration_is_converted_to_inclusive_dates() -> None:
 def test_explicit_end_of_day_and_date_only_values() -> None:
     assert parse_period("2024-12-31T24:00:00").end == date(2024, 12, 31)
     assert parse_period("2024-12-31").end == date(2024, 12, 31)
+
+
+def test_text_facts_are_read_separately(load_report) -> None:
+    report = load_report("prosegur_cash_2024.json")
+    parents = list(iter_text_facts(report, frozenset({"ifrs-full:NameOfParentEntity"})))
+    assert len(parents) == 1 and "Prosegur" in parents[0].value
 
 
 def test_numeric_facts_skip_text_blocks(load_report) -> None:
@@ -71,9 +77,10 @@ def test_inf_decimals_and_nil_values() -> None:
             },
         }
     }
-    facts = list(iter_numeric_facts(report))
-    assert [f.fact_id for f in facts] == ["a"]
-    assert facts[0].decimals is None
+    facts = {f.fact_id: f for f in iter_numeric_facts(report)}
+    assert facts["a"].decimals is None and not facts["a"].is_nil
+    # a nil fact is kept as "not available": no value, flagged, never turned into 0
+    assert facts["b"].is_nil and facts["b"].value is None
 
 
 def test_taxonomy_dimensions_are_kept_core_ones_are_not(load_report) -> None:

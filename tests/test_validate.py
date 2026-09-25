@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from sfetl.oim import Period
 from sfetl.transform import FilingResult, MetricValue
-from sfetl.validate import has_blocking_duplicates, render_markdown, validate
+from sfetl.validate import render_rules_markdown, validate
 
 
 def statuses(result: FilingResult) -> dict[str, str]:
@@ -16,10 +16,12 @@ def statuses(result: FilingResult) -> dict[str, str]:
     }
 
 
-def with_metric(result: FilingResult, name: str, value: str) -> FilingResult:
+def with_metric(result: FilingResult, name: str, value: str | None) -> FilingResult:
     clone = copy.deepcopy(result)
     old = clone.metrics[name]
-    clone.metrics[name] = replace(old, value=Decimal(value))
+    clone.metrics[name] = replace(
+        old, value=None if value is None else Decimal(value), is_nil=value is None
+    )
     return clone
 
 
@@ -59,6 +61,15 @@ def test_missing_core_metrics_are_listed(transformed) -> None:
     assert any(i.rule == "non_eur_unit" for i in report.issues)
 
 
+def test_a_nil_core_metric_counts_as_missing_and_is_reported(transformed) -> None:
+    result = with_metric(transformed("endesa_2024.json"), "revenue", None)
+    report = validate([result])
+    assert {i.rule for i in report.issues if i.metric == "revenue"} == {
+        "missing_core_metric",
+        "nil_fact",
+    }
+
+
 def test_sign_check(transformed) -> None:
     result = with_metric(transformed("endesa_2024.json"), "cash", "-5")
     report = validate([result])
@@ -76,19 +87,33 @@ def test_component_bounds(transformed) -> None:
     assert statuses(too_big)["component_bounds"] == "flag"
 
 
+def test_subtotal_assets_split_is_checked(transformed) -> None:
+    result = transformed("endesa_2024.json")
+    assert statuses(result)["subtotal_check"] == "pass"
+    broken = with_metric(result, "current_assets", "1")
+    report = validate([broken])
+    [issue] = [i for i in report.issues if i.rule == "subtotal_check"]
+    assert issue.severity == "warning" and issue.detail.startswith("assets_split")
+
+
+def test_subtotal_check_skips_a_derived_total(transformed) -> None:
+    # Amper's total liabilities is derived from its two components: equal by construction,
+    # so checking it would prove nothing
+    result = transformed("amper_2024.json")
+    report = validate([result])
+    assert not [i for i in report.issues if i.detail.startswith("liabilities_split")]
+
+
+def test_subtotals_catch_amper_held_for_sale_assets(transformed) -> None:
+    report = validate([transformed("amper_2024.json")])
+    details = [i.detail for i in report.issues if i.rule == "subtotal_check"]
+    assert any(d.startswith("assets_split") for d in details)
+
+
 def test_period_consistency(transformed) -> None:
     result = copy.deepcopy(transformed("endesa_2024.json"))
     result.document_period_end = date(2023, 12, 31)
     assert statuses(result)["period_consistency"] == "flag"
-
-
-def test_one_value_per_company_year_metric(transformed) -> None:
-    a = transformed("endesa_2024.json")
-    b = copy.deepcopy(a)
-    b.meta = replace(b.meta, filing_id=b.meta.filing_id + 1, fxo_id=b.meta.fxo_id + "-copy")
-    report = validate([a, b])
-    assert has_blocking_duplicates(report)
-    assert validate([a]).outcomes[-1].counts["pass"] == 1
 
 
 def test_validation_never_changes_values(transformed) -> None:
@@ -100,7 +125,7 @@ def test_validation_never_changes_values(transformed) -> None:
 
 def test_report_lists_rules_and_flags(transformed) -> None:
     results = [transformed("realia_2024.json"), transformed("endesa_2024.json")]
-    text = render_markdown(validate(results), results)
+    text = "\n".join(render_rules_markdown(validate(results), results))
     assert "| `balance_identity` | error | 1 | 1 | 0 |" in text
     assert "REALIA BUSINESS, S.A. FY2024" in text
 

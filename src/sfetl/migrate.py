@@ -3,6 +3,13 @@
 Applies ``db/migrations/NNN_name.sql`` in order, each in its own transaction, and records it in
 ``schema_migrations`` with a checksum. A migration that was edited after being applied is an
 error: fix forward with a new numbered file instead.
+
+Why version + checksum, not just the file name. The production runner this project rebuilds
+recorded each migration by file name only. That was enough to apply each file once, but it let
+two files share a number without anyone noticing, and it could not tell an applied file that
+had been edited afterwards from the original. Here the three-digit version is the key:
+duplicate versions are refused before anything runs, and the checksum (line endings
+normalised) refuses an edited migration. An advisory lock keeps two runners from racing.
 """
 
 from __future__ import annotations
@@ -20,6 +27,7 @@ from sfetl.config import MIGRATIONS_DIR
 MIGRATION_RE = re.compile(r"^(\d{3})_([a-z0-9_]+)\.sql$")
 LOCK_KEY = 7_345_001  # arbitrary advisory-lock key: one runner at a time
 READER_ROLE = "sfetl_reader"
+ASSISTANT_ROLE = "sfetl_assistant"
 
 
 @dataclass(frozen=True)
@@ -103,13 +111,21 @@ def apply_migrations(conn: psycopg.Connection, directory: Path = MIGRATIONS_DIR)
     return applied_now
 
 
-def set_reader_password(conn: psycopg.Connection, password: str) -> None:
-    """Enable LOGIN on the read-only role with the given password (never stored in git)."""
+def set_role_password(conn: psycopg.Connection, role: str, password: str) -> None:
+    """Enable LOGIN on a role created by a migration (the password is never stored in git)."""
     if not password:
-        raise MigrationError("SFETL_READER_PASSWORD is empty")
+        raise MigrationError(f"empty password for {role}")
     with conn.transaction():
         conn.execute(
             sql.SQL("ALTER ROLE {} WITH LOGIN PASSWORD {}").format(
-                sql.Identifier(READER_ROLE), sql.Literal(password)
+                sql.Identifier(role), sql.Literal(password)
             )
         )
+
+
+def set_reader_password(conn: psycopg.Connection, password: str) -> None:
+    set_role_password(conn, READER_ROLE, password)
+
+
+def set_assistant_password(conn: psycopg.Connection, password: str) -> None:
+    set_role_password(conn, ASSISTANT_ROLE, password)
