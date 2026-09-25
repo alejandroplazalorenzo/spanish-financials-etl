@@ -1,0 +1,151 @@
+{
+  "run_at": "2026-09-24T17:14:01",
+  "provider": "ollama",
+  "model": "qwen3:4b",
+  "questions": 12,
+  "match": 3,
+  "strict": 2,
+  "accuracy": 0.25,
+  "failure_categories": {
+    "execution_error": 4,
+    "rejected_by_guardrail": 1,
+    "wrong_values": 2,
+    "wrong_row_count": 2
+  },
+  "records": [
+    {
+      "id": "x01",
+      "lang": "en",
+      "question": "Which companies have a fiscal year that does not end on 31 December? List the company names.",
+      "generated_sql": "SELECT DISTINCT v_company.name AS \"Company Name\" FROM v_company JOIN v_financial ON v_company.lei = v_financial.lei WHERE v_financial.fiscal_year_end != '31-12' LIMIT 30",
+      "seconds": 1.4,
+      "category": "execution_error",
+      "error": "invalid input syntax for type date: \"31-12\"",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT DISTINCT company_name FROM v_financial\nWHERE to_char(fiscal_year_end, 'MM-DD') <> '12-31'"
+    },
+    {
+      "id": "x02",
+      "lang": "en",
+      "question": "How many filings have more than 10 XBRL warnings?",
+      "generated_sql": "SELECT COUNT(*) FROM v_filing WHERE xbrl_warnings > 10",
+      "seconds": 0.6,
+      "match": true,
+      "strict": true,
+      "reference_sql": "SELECT count(*) FROM v_filing WHERE xbrl_warnings > 10"
+    },
+    {
+      "id": "x03",
+      "lang": "en",
+      "question": "Which companies had goodwill larger than their total equity in fiscal year 2024?",
+      "generated_sql": "SELECT v_company.name AS \"Company Name\", v_financial.value AS \"Goodwill\", v_financial_2.value AS \"Total Equity\" FROM v_financial AS v_financial INNER JOIN v_financial AS v_fin  ON v_financial.lei = v_fin_ lei AND v_financial.fiscal_year = v_fin_ fiscal_year AND v_financial.metric_code = 'goodwill' AND v_fin_ metric_code = 'total_equity' WHERE v_financial.fiscal_year = 2024 AND v_financial.is_reported = true AND v_fin_ is_reported = true LIMIT 30",
+      "seconds": 1.8,
+      "category": "rejected_by_guardrail",
+      "error": "could not parse SQL: Invalid expression / Unexpected token",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT g.company_name\nFROM v_financial g\nJOIN v_financial e\n  ON e.lei = g.lei AND e.fiscal_year = g.fiscal_year AND e.metric_code = 'total_equity'\nWHERE g.metric_code = 'goodwill' AND g.fiscal_year = 2024 AND g.value > e.value"
+    },
+    {
+      "id": "x04",
+      "lang": "en",
+      "question": "Which companies had a negative operating cash flow but a positive profit for the year in 2024?",
+      "generated_sql": "SELECT v_company.name AS \"Company Name\", v_financial.fiscal_year AS \"Fiscal Year\", v_financial.value AS \"Operating Cash Flow\", v_financial.value AS \"Profit\" FROM v_financial INNER JOIN v_company ON v_financial.lei = v_company.lei WHERE v_financial.fiscal_year = 2024 AND v_financial.metric_code = 'operating_cash_flow' AND v_financial.value < 0 AND v_financial.metric_code = 'net_profit' AND v_fin",
+      "seconds": 1.6,
+      "category": "execution_error",
+      "error": "column \"v_fin\" does not exist",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT o.company_name\nFROM v_financial o\nJOIN v_financial p\n  ON p.lei = o.lei AND p.fiscal_year = o.fiscal_year AND p.metric_code = 'net_profit'\nWHERE o.metric_code = 'operating_cash_flow' AND o.fiscal_year = 2024\n  AND o.value < 0 AND p.value > 0"
+    },
+    {
+      "id": "x05",
+      "lang": "en",
+      "question": "How many companies report a non-zero profit or loss from discontinued operations in fiscal year 2024?",
+      "generated_sql": "SELECT COUNT(*) AS count FROM v_financial AS f WHERE f.fiscal_year = 2024 AND f.metric_code = 'profit_discontinued' AND f.is_reported = true AND f.value > 0",
+      "seconds": 0.9,
+      "category": "wrong_values",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT count(DISTINCT lei) FROM v_financial\nWHERE metric_code = 'profit_discontinued' AND fiscal_year = 2024 AND value <> 0"
+    },
+    {
+      "id": "x06",
+      "lang": "en",
+      "question": "Which company had the largest increase in cash and cash equivalents from fiscal year 2023 to 2024, in euros?",
+      "generated_sql": "SELECT v_financial.company_name, v_financial.value AS \"Cash Change\" FROM v_financial INNER JOIN v_company ON v_financial.lei = v_company.lei WHERE v_financial.metric_code = 'cash' AND v_financial.fiscal_year = 2024 AND v_financial.is_reported = true AND v_financial.is_nil = false AND v_company.is_financial = true LIMIT 30",
+      "seconds": 1.3,
+      "category": "wrong_row_count",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT a.company_name\nFROM v_financial a\nJOIN v_financial b ON b.lei = a.lei AND b.metric_code = 'cash' AND b.fiscal_year = 2023\nWHERE a.metric_code = 'cash' AND a.fiscal_year = 2024\nORDER BY a.value - b.value DESC\nLIMIT 1"
+    },
+    {
+      "id": "x07",
+      "lang": "en",
+      "question": "List the companies whose employee benefits expense exceeded 1 billion euros in fiscal year 2024.",
+      "generated_sql": "SELECT v_company.name AS \"Company Name\", v_financial.fiscal_year AS \"Fiscal Year\", v_financial.value AS \"Value\" FROM v_financial INNER JOIN v_company ON v_financial.lei = v_company.lei WHERE v_financial.metric_code = 'employee_benefits_expense' AND v_financial.fiscal_year = 2024 AND v_financial.value > 1000000000 AND v_financial.is_reported = true LIMIT 30",
+      "seconds": 1.6,
+      "match": true,
+      "strict": false,
+      "reference_sql": "SELECT company_name FROM v_financial\nWHERE metric_code = 'employee_benefits_expense' AND fiscal_year = 2024\n  AND value > 1000000000"
+    },
+    {
+      "id": "x08",
+      "lang": "en",
+      "question": "Which companies have a derived (not reported) total liabilities figure in both 2023 and 2024?",
+      "generated_sql": "SELECT DISTINCT v_company.name AS \"Company Name\", v_company.lei AS \"LEI\" FROM v_company INNER JOIN v_financial ON v_company.lei = v_financial.lei WHERE v_financial.fiscal_year IN (2023, 2024) AND v_financial.metric_code = 'total_liabilities' AND v_financial.is_nil = true AND v_financial.is_reported = false LIMIT 30",
+      "seconds": 1.5,
+      "category": "wrong_row_count",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT company_name FROM v_financial\nWHERE metric_code = 'total_liabilities' AND NOT is_reported\nGROUP BY lei, company_name\nHAVING count(DISTINCT fiscal_year) = 2"
+    },
+    {
+      "id": "x09",
+      "lang": "es",
+      "question": "¿Qué empresas con patrimonio neto positivo tienen intereses minoritarios superiores al 20 % de ese patrimonio en 2024?",
+      "generated_sql": "SELECT DISTINCT v_company.name AS \"Company Name\", v_company_ratios.net_profit_parent AS \"Net Profit Parent\", v_company_ratios.net_profit_nci AS \"Net Profit NCI\" FROM v_company_ratios JOIN v_company ON v_company.lei = v_company_ratios.lei WHERE v_company_ratios.fiscal_year = 2024 AND v_company_ratios.net_profit_nci > 0.2 * v_company_ratios.net_profit_parent",
+      "seconds": 1.5,
+      "category": "execution_error",
+      "error": "column v_company_ratios.net_profit_parent does not exist",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT n.company_name\nFROM v_financial n\nJOIN v_financial t\n  ON t.lei = n.lei AND t.fiscal_year = n.fiscal_year AND t.metric_code = 'total_equity'\nWHERE n.metric_code = 'non_controlling_interests' AND n.fiscal_year = 2024\n  AND t.value > 0 AND n.value > 0.2 * t.value"
+    },
+    {
+      "id": "x10",
+      "lang": "en",
+      "question": "How many companies have an ultimate parent, according to GLEIF, that is not one of the companies in this database?",
+      "generated_sql": "SELECT COUNT(*) FROM v_ownership o JOIN v_company c ON o.lei = c.lei WHERE o.source = 'gleif' AND o.parent_in_dataset = 'no'",
+      "seconds": 0.8,
+      "category": "wrong_values",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT count(DISTINCT lei) FROM v_ownership\nWHERE source = 'gleif' AND relation = 'ultimate' AND resolution = 'unresolved'"
+    },
+    {
+      "id": "x11",
+      "lang": "es",
+      "question": "¿Qué empresas pagaron dividendos en 2024 a pesar de tener pérdidas ese año?",
+      "generated_sql": "SELECT DISTINCT v_company.name AS \"Company Name\", v_filing.fiscal_year AS \"Fiscal Year\", v_filing.fxo_id AS \"FXO ID\", v_financial.value AS \"Dividend Value\" FROM v_filing INNER JOIN v_financial ON v_filing.fxo_id = v_financial.fxo_id AND v_filing.fiscal_year = v_financial.fiscal_year WHERE v_financial.metric_code = 'dividends_paid' AND v_filing.fiscal_year = 2024 AND v_financial.is_reported = true AND v_financial.value IS NOT NULL AND v_financial.is_nil = false",
+      "seconds": 1.8,
+      "category": "execution_error",
+      "error": "missing FROM-clause entry for table \"v_company\"",
+      "match": false,
+      "strict": false,
+      "reference_sql": "SELECT d.company_name\nFROM v_financial d\nJOIN v_financial p\n  ON p.lei = d.lei AND p.fiscal_year = d.fiscal_year AND p.metric_code = 'net_profit'\nWHERE d.metric_code = 'dividends_paid' AND d.fiscal_year = 2024\n  AND d.value <> 0 AND p.value < 0"
+    },
+    {
+      "id": "x12",
+      "lang": "en",
+      "question": "For each fiscal year, how many filings have at least one error-severity validation flag?",
+      "generated_sql": "SELECT fiscal_year, COUNT(*) AS count FROM v_filing WHERE EXISTS (SELECT 1 FROM v_validation_issue WHERE v_filing.fxo_id = v_validation_issue.fxo_id AND v_validation_issue.severity = 'error') GROUP BY fiscal_year LIMIT 30",
+      "seconds": 0.9,
+      "match": true,
+      "strict": true,
+      "reference_sql": "SELECT fiscal_year, count(*) FROM v_filing WHERE flags_error > 0\nGROUP BY fiscal_year"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "started_at": "2026-09-23T14:29:28",
+  "started_at": "2026-09-23T17:53:06",
   "fiscal_years": [
     2023,
     2024
@@ -9,22 +9,57 @@
   "downloaded_now": 0,
   "read_from_cache": 230,
   "companies": 125,
-  "numeric_facts_read": 111260,
-  "metric_values": 2130,
-  "duplicate_groups_resolved": 655,
+  "numeric_facts_read": 111370,
+  "nil_facts_read": 110,
+  "metric_values": 7398,
+  "nil_metric_values": 0,
+  "derived_metric_values": 145,
+  "duplicate_groups_resolved": 856,
   "metric_counts": {
     "total_assets": 228,
-    "total_equity": 228,
     "cash": 228,
+    "total_equity": 228,
+    "equity_and_liabilities": 224,
+    "profit_before_tax": 224,
+    "income_tax": 224,
+    "property_plant_equipment": 223,
     "total_liabilities": 222,
+    "financing_cash_flow": 222,
+    "investing_cash_flow": 221,
+    "issued_capital": 220,
     "net_profit": 220,
     "net_profit_parent": 215,
+    "operating_cash_flow": 214,
+    "non_current_assets": 206,
+    "non_current_liabilities": 206,
     "current_assets": 200,
     "current_liabilities": 200,
     "operating_profit": 199,
-    "revenue": 190
+    "non_controlling_interests": 190,
+    "revenue": 190,
+    "finance_income": 189,
+    "employee_benefits_expense": 187,
+    "net_profit_nci": 187,
+    "net_change_in_cash": 180,
+    "finance_costs": 174,
+    "trade_receivables": 168,
+    "equity_parent": 164,
+    "trade_payables": 164,
+    "profit_continuing": 161,
+    "dividends_paid": 155,
+    "intangible_assets": 153,
+    "goodwill": 148,
+    "depreciation_amortisation": 146,
+    "basic_eps": 146,
+    "inventories": 140,
+    "capex_ppe": 138,
+    "investment_property": 121,
+    "right_of_use_assets": 93,
+    "profit_discontinued": 80
   },
   "financial_companies": 11,
+  "unmapped_extension_facts": 6472,
+  "unmapped_revenue_like": 20,
   "validation": {
     "balance_identity": {
       "pass": 209,
@@ -46,14 +81,19 @@
       "flag": 1,
       "n/a": 2
     },
+    "subtotal_check": {
+      "pass": 174,
+      "flag": 54,
+      "n/a": 2
+    },
     "period_consistency": {
       "pass": 230,
       "flag": 0,
       "n/a": 0
     },
     "non_eur_unit": {
-      "pass": 228,
-      "flag": 2,
+      "pass": 223,
+      "flag": 7,
       "n/a": 0
     },
     "inconsistent_duplicate": {
@@ -61,26 +101,105 @@
       "flag": 0,
       "n/a": 0
     },
-    "unique_value": {
+    "nil_fact": {
       "pass": 230,
       "flag": 0,
       "n/a": 0
     }
   },
   "issues_by_severity": {
-    "warning": 54,
+    "warning": 139,
     "error": 14
   },
+  "failed_filings": [],
   "load": {
-    "companies": 125,
-    "filings": 230,
-    "facts": 2130,
-    "issues": 68
+    "filings_loaded": 230,
+    "values_inserted": 7398,
+    "values_not_inserted": 0,
+    "warnings": 0,
+    "gleif_records": 125
   },
+  "ownership": {
+    "esef": {
+      "self": 345,
+      "unparsed": 3,
+      "unresolved": 98,
+      "none_declared": 2,
+      "lei": 10
+    },
+    "gleif": {
+      "unresolved": 46,
+      "none_declared": 196,
+      "lei": 8
+    }
+  },
+  "db_checks": {
+    "ok": true,
+    "passed": 27,
+    "failed": [],
+    "stats": {
+      "nil_values_loaded": 0,
+      "derived_values": 145,
+      "revenue_gap": {
+        "without_ifrs_revenue": 16,
+        "with_revenue_like_extension": 4
+      },
+      "ownership_view": [
+        [
+          "esef",
+          "direct",
+          124,
+          3,
+          21,
+          98,
+          0
+        ],
+        [
+          "esef",
+          "ultimate",
+          124,
+          2,
+          33,
+          88,
+          0
+        ],
+        [
+          "gleif",
+          "direct",
+          125,
+          5,
+          22,
+          0,
+          0
+        ],
+        [
+          "gleif",
+          "ultimate",
+          125,
+          3,
+          24,
+          0,
+          0
+        ]
+      ],
+      "row_counts": {
+        "company": 125,
+        "fiscal_period": 230,
+        "filing": 230,
+        "metric": 40,
+        "financial_fact": 7398,
+        "validation_issue": 153,
+        "ownership": 708
+      }
+    }
+  },
+  "exit_code": 0,
   "seconds": {
-    "extract": 0.1,
-    "transform": 23.5,
-    "validate": 0.0,
-    "load": 1.4
+    "extract": 0.3,
+    "transform": 117.8,
+    "validate": 0.1,
+    "load": 8.6,
+    "ownership": 2.1,
+    "db_checks": 0.2
   }
 }

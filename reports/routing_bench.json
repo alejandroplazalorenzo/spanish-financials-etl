@@ -1,0 +1,671 @@
+{
+  "run_at": "2026-09-24T17:19:01",
+  "provider": "ollama",
+  "model": "qwen3:4b",
+  "cases": 42,
+  "passed": 38,
+  "by_expect": {
+    "intent": {
+      "n": 35,
+      "passed": 33
+    },
+    "free_sql": {
+      "n": 4,
+      "passed": 2
+    },
+    "decline": {
+      "n": 3,
+      "passed": 3
+    }
+  },
+  "by_lang": {
+    "en": 25,
+    "es": 13
+  },
+  "alternatives_offered": 0,
+  "params_checked": 27,
+  "params_ok": 27,
+  "median_classify_ms": 878,
+  "records": [
+    {
+      "id": "r01",
+      "lang": "en",
+      "question": "What was Iberdrola's revenue in 2024?",
+      "expect": "intent",
+      "expected_intent": "company_metric",
+      "got_intent": "company_metric",
+      "got_params": {
+        "company": "Iberdrola",
+        "metric": "revenue",
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 1467,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r02",
+      "lang": "es",
+      "question": "¿Cuánto facturó Inditex en 2024?",
+      "expect": "intent",
+      "expected_intent": "company_metric",
+      "got_intent": "company_metric",
+      "got_params": {
+        "company": "Inditex",
+        "metric": "revenue",
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 1170,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r03",
+      "lang": "en",
+      "question": "Give me the key figures of Telefónica.",
+      "expect": "intent",
+      "expected_intent": "company_key_figures",
+      "got_intent": "company_key_figures",
+      "got_params": {
+        "company": "Telefónica",
+        "year": "2023"
+      },
+      "alternative": null,
+      "classify_ms": 1005,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r04",
+      "lang": "es",
+      "question": "Resumen financiero de Repsol en 2023",
+      "expect": "intent",
+      "expected_intent": "company_key_figures",
+      "got_intent": "financial_statement",
+      "got_params": {
+        "company": "Repsol",
+        "year": "2023"
+      },
+      "alternative": null,
+      "classify_ms": 959,
+      "params_ok": null,
+      "passed": false
+    },
+    {
+      "id": "r05",
+      "lang": "en",
+      "question": "Show me the balance sheet of Endesa for 2024.",
+      "expect": "intent",
+      "expected_intent": "financial_statement",
+      "got_intent": "financial_statement",
+      "got_params": {
+        "company": "Endesa",
+        "statement": "balance_sheet",
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 1184,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r06",
+      "lang": "es",
+      "question": "Cuenta de resultados de Acciona",
+      "expect": "intent",
+      "expected_intent": "financial_statement",
+      "got_intent": "financial_statement",
+      "got_params": {
+        "company": "Acciona",
+        "statement": "income_statement"
+      },
+      "alternative": null,
+      "classify_ms": 973,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r07",
+      "lang": "en",
+      "question": "Cash flow statement of Cellnex",
+      "expect": "intent",
+      "expected_intent": "financial_statement",
+      "got_intent": "financial_statement",
+      "got_params": {
+        "company": "Cellnex",
+        "statement": "cash_flow"
+      },
+      "alternative": null,
+      "classify_ms": 877,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r08",
+      "lang": "en",
+      "question": "What are the margins of Viscofan?",
+      "expect": "intent",
+      "expected_intent": "company_ratios",
+      "got_intent": "company_ratios",
+      "got_params": {
+        "company": "Viscofan",
+        "year": "2023"
+      },
+      "alternative": null,
+      "classify_ms": 928,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r09",
+      "lang": "es",
+      "question": "¿Cómo ha evolucionado el beneficio neto de Mapfre?",
+      "expect": "intent",
+      "expected_intent": "company_growth",
+      "got_intent": "company_growth",
+      "got_params": {
+        "company": "Mapfre",
+        "metric": "net_profit"
+      },
+      "alternative": null,
+      "classify_ms": 875,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r10",
+      "lang": "en",
+      "question": "Which 5 companies had the highest revenue in 2024?",
+      "expect": "intent",
+      "expected_intent": "ranking_by_metric",
+      "got_intent": "ranking_by_metric",
+      "got_params": {
+        "metric": "revenue",
+        "year": "2024",
+        "direction": "top",
+        "n": "5"
+      },
+      "alternative": null,
+      "classify_ms": 1340,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r11",
+      "lang": "es",
+      "question": "¿Qué empresas tienen menos caja?",
+      "expect": "intent",
+      "expected_intent": "ranking_by_metric",
+      "got_intent": "ranking_by_metric",
+      "got_params": {
+        "metric": "cash",
+        "direction": "bottom",
+        "n": "10"
+      },
+      "alternative": null,
+      "classify_ms": 1101,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r12",
+      "lang": "en",
+      "question": "Top 10 companies by total assets",
+      "expect": "intent",
+      "expected_intent": "ranking_by_metric",
+      "got_intent": "ranking_by_metric",
+      "got_params": {
+        "metric": "total_assets",
+        "n": "10"
+      },
+      "alternative": null,
+      "classify_ms": 893,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r13",
+      "lang": "en",
+      "question": "Which companies have the best net margin in 2024?",
+      "expect": "intent",
+      "expected_intent": "ranking_by_ratio",
+      "got_intent": "ranking_by_ratio",
+      "got_params": {
+        "ratio": "net_margin",
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 886,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r14",
+      "lang": "es",
+      "question": "Ranking de empresas por ratio de patrimonio sobre activo",
+      "expect": "intent",
+      "expected_intent": "ranking_by_ratio",
+      "got_intent": "company_ratios",
+      "got_params": {
+        "company": "Ranking de empresas por ratio de patrimonio sobre activo",
+        "year": "2023"
+      },
+      "alternative": null,
+      "classify_ms": 1066,
+      "params_ok": null,
+      "passed": false
+    },
+    {
+      "id": "r15",
+      "lang": "en",
+      "question": "Compare Iberdrola and Endesa by net profit.",
+      "expect": "intent",
+      "expected_intent": "compare_companies",
+      "got_intent": "compare_companies",
+      "got_params": {
+        "company1": "Iberdrola",
+        "company2": "Endesa",
+        "metric": "net_profit"
+      },
+      "alternative": null,
+      "classify_ms": 1173,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r16",
+      "lang": "es",
+      "question": "Compara los ingresos de Inditex y Puig en 2024",
+      "expect": "intent",
+      "expected_intent": "compare_companies",
+      "got_intent": "compare_companies",
+      "got_params": {
+        "company1": "Inditex",
+        "company2": "Puig",
+        "metric": "revenue",
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 1414,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r17",
+      "lang": "en",
+      "question": "Which companies made a loss in 2024?",
+      "expect": "intent",
+      "expected_intent": "loss_making_companies",
+      "got_intent": "loss_making_companies",
+      "got_params": {
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 718,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r18",
+      "lang": "es",
+      "question": "¿Qué empresas no reportan ingresos?",
+      "expect": "intent",
+      "expected_intent": "companies_missing_metric",
+      "got_intent": "companies_missing_metric",
+      "got_params": {
+        "metric": "revenue",
+        "year": "2023"
+      },
+      "alternative": null,
+      "classify_ms": 932,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r19",
+      "lang": "en",
+      "question": "List all the banks and insurers in the database.",
+      "expect": "intent",
+      "expected_intent": "list_companies",
+      "got_intent": "list_companies",
+      "got_params": {
+        "kind": "financial"
+      },
+      "alternative": null,
+      "classify_ms": 666,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r20",
+      "lang": "es",
+      "question": "¿Qué empresas hay en la base de datos?",
+      "expect": "intent",
+      "expected_intent": "list_companies",
+      "got_intent": "list_companies",
+      "got_params": {
+        "kind": "all"
+      },
+      "alternative": null,
+      "classify_ms": 665,
+      "params_ok": null,
+      "passed": true
+    },
+    {
+      "id": "r21",
+      "lang": "en",
+      "question": "Is Naturhouse in the database?",
+      "expect": "intent",
+      "expected_intent": "find_company",
+      "got_intent": "find_company",
+      "got_params": {
+        "company": "Naturhouse"
+      },
+      "alternative": null,
+      "classify_ms": 679,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r22",
+      "lang": "en",
+      "question": "What metrics can I ask about?",
+      "expect": "intent",
+      "expected_intent": "list_metrics",
+      "got_intent": "list_metrics",
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 397,
+      "params_ok": null,
+      "passed": true
+    },
+    {
+      "id": "r23",
+      "lang": "es",
+      "question": "¿Qué informes anuales hay cargados de Amper?",
+      "expect": "intent",
+      "expected_intent": "company_filings",
+      "got_intent": "company_filings",
+      "got_params": {
+        "company": "Amper"
+      },
+      "alternative": null,
+      "classify_ms": 681,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r24",
+      "lang": "en",
+      "question": "What data-quality problems were found in Realia's accounts?",
+      "expect": "intent",
+      "expected_intent": "company_flags",
+      "got_intent": "company_flags",
+      "got_params": {
+        "company": "Realia",
+        "year": "latest"
+      },
+      "alternative": null,
+      "classify_ms": 880,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r25",
+      "lang": "es",
+      "question": "Resumen de las incidencias de validación en 2024",
+      "expect": "intent",
+      "expected_intent": "flags_summary",
+      "got_intent": "flags_summary",
+      "got_params": {
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 688,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r26",
+      "lang": "en",
+      "question": "Which figures are derived rather than reported?",
+      "expect": "intent",
+      "expected_intent": "derived_values",
+      "got_intent": "derived_values",
+      "got_params": {
+        "company": "the user wrote it",
+        "year": "the latest loaded"
+      },
+      "alternative": null,
+      "classify_ms": 902,
+      "params_ok": null,
+      "passed": true
+    },
+    {
+      "id": "r27",
+      "lang": "en",
+      "question": "Who owns Prosegur Cash?",
+      "expect": "intent",
+      "expected_intent": "company_parent",
+      "got_intent": "company_parent",
+      "got_params": {
+        "company": "Prosegur Cash"
+      },
+      "alternative": null,
+      "classify_ms": 715,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r28",
+      "lang": "es",
+      "question": "¿Quién es la matriz última de Endesa?",
+      "expect": "intent",
+      "expected_intent": "company_parent",
+      "got_intent": "company_parent",
+      "got_params": {
+        "company": "Endesa"
+      },
+      "alternative": null,
+      "classify_ms": 680,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r29",
+      "lang": "en",
+      "question": "Which listed companies in the database are subsidiaries of Acciona?",
+      "expect": "intent",
+      "expected_intent": "companies_owned_by",
+      "got_intent": "companies_owned_by",
+      "got_params": {
+        "company": "Acciona"
+      },
+      "alternative": null,
+      "classify_ms": 706,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r30",
+      "lang": "en",
+      "question": "Show the contradictory ownership declarations.",
+      "expect": "intent",
+      "expected_intent": "ownership_contradictions",
+      "got_intent": "ownership_contradictions",
+      "got_params": {
+        "kind": "all"
+      },
+      "alternative": null,
+      "classify_ms": 712,
+      "params_ok": null,
+      "passed": true
+    },
+    {
+      "id": "r31",
+      "lang": "es",
+      "question": "¿Qué empresas tienen su matriz fuera de la base de datos?",
+      "expect": "intent",
+      "expected_intent": "parents_outside_dataset",
+      "got_intent": "parents_outside_dataset",
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 789,
+      "params_ok": null,
+      "passed": true
+    },
+    {
+      "id": "r32",
+      "lang": "en",
+      "question": "Which years are loaded and how many companies are there?",
+      "expect": "intent",
+      "expected_intent": "coverage_overview",
+      "got_intent": "coverage_overview",
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 406,
+      "params_ok": null,
+      "passed": true
+    },
+    {
+      "id": "r33",
+      "lang": "en",
+      "question": "And Repsol?",
+      "expect": "intent",
+      "expected_intent": "company_metric",
+      "got_intent": "company_metric",
+      "got_params": {
+        "company": "Repsol",
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 933,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r34",
+      "lang": "es",
+      "question": "¿Y la de Logista?",
+      "expect": "intent",
+      "expected_intent": "company_parent",
+      "got_intent": "company_parent",
+      "got_params": {
+        "company": "Logista"
+      },
+      "alternative": null,
+      "classify_ms": 675,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "r35",
+      "lang": "en",
+      "question": "and in 2023?",
+      "expect": "intent",
+      "expected_intent": "ranking_by_metric",
+      "got_intent": "ranking_by_metric",
+      "got_params": {
+        "metric": "total_assets",
+        "year": "2023"
+      },
+      "alternative": null,
+      "classify_ms": 908,
+      "params_ok": true,
+      "passed": true
+    },
+    {
+      "id": "f36",
+      "lang": "en",
+      "question": "Which companies have a fiscal year that does not end on 31 December?",
+      "expect": "free_sql",
+      "expected_intent": null,
+      "got_intent": "coverage_overview",
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 1034,
+      "passed": false
+    },
+    {
+      "id": "f37",
+      "lang": "en",
+      "question": "How many filings have more than 10 XBRL warnings?",
+      "expect": "free_sql",
+      "expected_intent": null,
+      "got_intent": null,
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 454,
+      "generated_sql": "SELECT COUNT(*) FROM v_filing WHERE xbrl_warnings > 10",
+      "guarded_sql": "SELECT COUNT(*) FROM v_filing WHERE xbrl_warnings > 10 LIMIT 30",
+      "passed": true
+    },
+    {
+      "id": "f38",
+      "lang": "es",
+      "question": "¿Qué empresas tienen un fondo de comercio mayor que su patrimonio neto en 2024?",
+      "expect": "free_sql",
+      "expected_intent": null,
+      "got_intent": "company_ratios",
+      "got_params": {
+        "company": "¿Qué empresas tienen un fondo de comercio mayor que su patrimonio neto en 2024?",
+        "year": "2024"
+      },
+      "alternative": null,
+      "classify_ms": 1255,
+      "passed": false
+    },
+    {
+      "id": "f39",
+      "lang": "en",
+      "question": "Which companies had a negative operating cash flow but a positive profit in 2024?",
+      "expect": "free_sql",
+      "expected_intent": null,
+      "got_intent": null,
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 507,
+      "generated_sql": "SELECT v_company.name AS \"Company Name\", v_financial.fiscal_year AS \"Fiscal Year\", v_financial.value AS \"Operating Cash Flow\", v_financial.value AS \"Profit\" FROM v_financial INNER JOIN v_company ON v_financial.lei = v_company.lei WHERE v_financial.fiscal_year = 2024 AND v_financial.metric_code = 'operating_cash_flow' AND v_financial.value < 0 AND v_financial.metric_code = 'net_profit' AND v_fin",
+      "guarded_sql": "SELECT v_company.name AS \"Company Name\", v_financial.fiscal_year AS \"Fiscal Year\", v_financial.value AS \"Operating Cash Flow\", v_financial.value AS \"Profit\" FROM v_financial INNER JOIN v_company ON v_financial.lei = v_company.lei WHERE v_financial.fiscal_year = 2024 AND v_financial.metric_code = 'operating_cash_flow' AND v_financial.value < 0 AND v_financial.metric_code = 'net_profit' AND v_fin LIMIT 30",
+      "passed": true
+    },
+    {
+      "id": "d40",
+      "lang": "en",
+      "question": "What will Iberdrola's share price be next month?",
+      "expect": "decline",
+      "expected_intent": null,
+      "got_intent": null,
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 443,
+      "passed": true
+    },
+    {
+      "id": "d41",
+      "lang": "es",
+      "question": "Borra todas las empresas de la base de datos.",
+      "expect": "decline",
+      "expected_intent": null,
+      "got_intent": null,
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 502,
+      "passed": true
+    },
+    {
+      "id": "d42",
+      "lang": "en",
+      "question": "What's the weather in Madrid tomorrow?",
+      "expect": "decline",
+      "expected_intent": null,
+      "got_intent": null,
+      "got_params": {},
+      "alternative": null,
+      "classify_ms": 434,
+      "passed": true
+    }
+  ]
+}

@@ -1,315 +1,364 @@
 # spanish-financials-etl
 
-Turns the official annual financial reports of Spanish listed companies (ESEF, tagged with
-XBRL) into a clean PostgreSQL dataset: ten canonical metrics per company and fiscal year, a
-separate validation step that flags what does not add up, ratio views, and an "ask your data"
-command that answers questions in English or Spanish with one guarded, read-only SQL query
-written by a local LLM, with a measured evaluation.
+[![CI](https://github.com/alejandroplazalorenzo/spanish-financials-etl/actions/workflows/ci.yml/badge.svg)](https://github.com/alejandroplazalorenzo/spanish-financials-etl/actions/workflows/ci.yml)
 
-## Why
+Turns the official annual reports of Spanish listed companies (ESEF, tagged with XBRL) into a
+PostgreSQL dataset: 40 IFRS metrics per company and fiscal year in a governed long table, the
+parent and ultimate parent of each company, validation that flags what does not add up, and an
+assistant that answers questions in English or Spanish by routing them to fixed, tested queries.
 
-Annual accounts are the core of company analysis. Issuers listed on EU regulated markets
-publish them in ESEF (European Single Electronic Format): an XHTML report whose financial
-statements carry XBRL tags, so the numbers are machine-readable. In practice the data is
-messy. The same figure is tagged several times, current and prior year sit side by side,
-totals are mixed with breakdowns by segment, and companies choose different IFRS concepts (or
-invent their own) for the same line. Banks and insurers use a different layout. Tagging errors
-reach the published filing. Reading ESEF correctly means deciding all of that explicitly.
+It is a rebuild, on public data, of the financial-statements ETL and the natural-language
+assistant I built at work. The design decisions come from that system; every figure below was
+measured again here.
 
-## Architecture
+## What it does
 
 ```
- filings.xbrl.org /api/filings, filter country = ES (public JSON:API)
-   │  index: 3 pages of 200 · reports: one xBRL-JSON per filing, gzip, 1 s apart
-   ▼
- ┌──────────────────────────────┐
- │ 1. EXTRACT                   │ ──▶ data/ (gitignored): index +
- │ latest report per company    │     xBRL-JSON .json.gz cache
- │ and fiscal year              │
- └──────────────┬───────────────┘
-                ▼
- ┌──────────────────────────────┐
- │ 2. TRANSFORM                 │  period · units · dimensions · duplicates
- │ facts -> 10 canonical metrics│  ifrs-full mapping · bank/insurer detection
- └──────────────┬───────────────┘
-                ▼
- ┌──────────────────────────────┐
- │ 3. VALIDATE (8 rules)        │ ──▶ reports/validation_report.md
- │ flags only, never edits      │ ──▶ validation_issue rows
- └──────────────┬───────────────┘
-                ▼
- ┌──────────────────────────────┐
- │ 4. LOAD  PostgreSQL 16       │ ◀── sfetl migrate: db/migrations/NNN_*.sql
- │ idempotent upserts           │     (schema_migrations + checksums)
- │ company · filing · metric    │
- │ financial_fact               │
- │ validation_issue · 3 views   │
- └──────────────┬───────────────┘
-                │ role sfetl_reader: SELECT only, read-only session, 5 s timeout
-                ▼
- ┌──────────────────────────────┐
- │ 5. ASK                       │  question (EN/ES) + schema + company names
- │ Ollama qwen2.5:7b-instruct   │  -> SQL -> guardrail -> rows
- │                              │  guardrail: parse, one SELECT, allow-listed
- │                              │  relations, forced LIMIT
- └──────────────────────────────┘
+ filings.xbrl.org /api/filings (country = ES)          api.gleif.org (LEI Level 2, CC0)
+   │ index + one xBRL-JSON per filing (cached)            │ parent / ultimate parent per LEI
+   ▼                                                      │
+ 1. EXTRACT ─ per filing: a failed download is recorded, the run goes on
+ 2. TRANSFORM ─ per filing: 40 metrics, nil facts, units, duplicates, extensions, parent names
+ 3. VALIDATE (before loading) ─ 9 rules on the filers' data; they flag, never edit
+ 4. LOAD ─ ONE TRANSACTION PER FILING; idempotent; collisions counted, never merged
+ 5. OWNERSHIP, second pass ─ resolve parents by LEI (GLEIF) or normalised name; keep the rest
+ 6. CHECK (after loading, in the database) ─ coverage, orphans, nil, golden figures,
+    acceptance queries ─▶ reports/validation_report.md; exit code 1 if anything is red
+   │
+   ▼  curated views only (v_financial, v_company, v_ownership ...), role sfetl_assistant
+ ASSISTANT ─ the LLM routes the question to one of 22 intents (JSON-schema output), or says
+            none fits; parameters bound, never interpolated; missing ones asked for; A/B when
+            ambiguous; free SQL only as a last resort, guarded and ALWAYS marked "not verified";
+            every question logged in assistant.query_log. CLI, or an optional Telegram webhook.
 ```
 
-Code: `src/sfetl/` — `extract.py`, `oim.py` (xBRL-JSON reader), `concepts.py` (mapping),
-`transform.py`, `validate.py`, `migrate.py`, `load.py`, `pipeline.py`, `cli.py`, and
-`ask/` (`prompt.py`, `llm.py`, `guardrails.py`, `runner.py`, `evaluate.py`).
+Code: `src/sfetl/` — `extract.py`, `oim.py` (xBRL-JSON reader), `concepts.py` (catalogue),
+`transform.py`, `ownership.py`, `validate.py`, `load.py`, `validate_db.py`, `pipeline.py`,
+`migrate.py`, `backup.py`, `telegram.py`, `cli.py`, and `ask/` (`intents.py`, `classify.py`,
+`llm.py`, `guardrails.py`, `service.py`, `render.py`, `smoke.py`, `bench.py`, `evaluate.py`).
 
 ## Data model
 
 | Object | Grain | Notes |
 |---|---|---|
-| `company` | one row per LEI | name from the latest filing; `is_financial` for banks and insurers |
-| `filing` | one row per report used | index metadata, detected period end, XBRL error/warning counts, link to the viewer |
-| `metric` | one row per metric | label, statement, instant/duration, source concepts |
-| `financial_fact` | (LEI, fiscal year, metric) | `value_eur`, reported `decimals`, period, `source_concept` (lineage), `filing_id` |
-| `validation_issue` | one row per flag | rule, severity, metric, human-readable detail |
-| `company_year` (view) | company-year | pivot of `financial_fact`, one column per metric |
-| `company_year_ratios` (view) | company-year | net margin, operating margin, equity ratio, current ratio |
-| `year_aggregate_ratios` (view) | fiscal year × financial/non-financial | ratios of sums, with the number of companies behind each |
+| `company` | one per LEI | surrogate `company_id`, `lei` UNIQUE; name of its latest filing |
+| `fiscal_period` | company × fiscal year | UNIQUE (company, year); start, end, months |
+| `filing` | one per report used | surrogate id; filings.xbrl.org id and `fxo_id` UNIQUE; XHTML and viewer links |
+| `metric` | 40 rows | code UNIQUE, label, statement, category, unit, period type, parent, order |
+| `financial_fact` | fiscal period × metric | `value` NULL only when `is_nil` (CHECK); `source_concept`, `decimals`, `filing_id` |
+| `validation_issue` | one per flag | rule, severity, metric, detail |
+| `ownership` | company × source × relation (× filing) | declared text, cleaned name, parent LEI, parent company if loaded, resolution |
+| `assistant.query_log` / `pending` / `page` | assistant state | modes, generated SQL, latencies, rating; A/B choices; pages |
+| `v_financial` (view) | long | company, year, statement, category, metric, **unit**, value, `is_nil`, **`is_reported`** |
+| `v_company`, `v_metric`, `v_company_ratios`, `v_filing`, `v_validation_issue`, `v_ownership` (views) | | the only relations the assistant can read |
 
-Metrics: `revenue`, `operating_profit`, `net_profit`, `net_profit_parent`, `total_assets`,
-`total_equity`, `total_liabilities`, `cash`, `current_assets`, `current_liabilities`.
+Adding a metric is one `INSERT` into `metric` (in a new migration) plus its concept list in
+`concepts.py`; `v_financial` and every intent pick it up without DDL.
 
 ## How the transform reads ESEF
 
 | Problem | Rule |
 |---|---|
-| Concepts | Only `ifrs-full` concepts, in priority order (e.g. revenue = `Revenue`, else `RevenueFromContractsWithCustomers`). `RevenueAndOperatingIncome` is not used: it adds other operating income. Company extension concepts are ignored: their meaning lives in anchoring relationships that xBRL-JSON does not carry. |
-| Banks and insurers | Detected when the report tags bank/insurance concepts (`DepositsFromCustomers`, `LoansAndAdvancesToCustomers`, `InsuranceRevenue`...). They have no revenue or current/non-current split, so those metrics are not expected from them and their margins stay NULL. |
-| Total liabilities | `ifrs-full:Liabilities`, or `NoncurrentLiabilities + CurrentLiabilities` when the total is not tagged (lineage recorded as `derived:...`). Never `Assets − Equity`: that would make the balance check pass by construction. |
-| Periods | xBRL-JSON writes the instant 31-12-2024 as `2025-01-01T00:00:00`; converted to inclusive dates. Instants must end on the fiscal year end; durations must end on it and last 350–380 days. Prior-year comparatives in each report are ignored: each year comes from its own report. |
-| Fiscal year label | Calendar year holding most of the months: year ending 31-01-2025 (Inditex) = FY2024; ending 31-03-2024 = FY2023. |
-| Units and decimals | Only `iso4217:EUR` is loaded; other currencies are recorded as a flag, not converted. Values in xBRL-JSON are already in euros; `decimals` is precision (`-6` = to the million) and is stored, never applied. |
-| Dimensions | Only facts without taxonomy dimensions are consolidated totals; anything with an axis (segments, equity components) is skipped. |
-| Duplicates | Same concept, period and unit tagged more than once: keep the most precise (highest `decimals`, INF first), then the first in document order. Duplicates that disagree beyond rounding are kept but flagged. |
-| Several reports per company-year | Keep the one added last to the index (then higher sequence, then higher id). |
+| Concepts | Only `ifrs-full` concepts, in priority order (revenue = `Revenue`, else `RevenueFromContractsWithCustomers`). `RevenueAndOperatingIncome` is not revenue. |
+| Extensions | Company extension concepts are **not mapped** (their meaning lives in anchoring relationships the xBRL-JSON does not carry) but **not dropped** either: every current-year, undimensioned EUR extension fact goes to `reports/unmapped_concepts.csv`, with a narrow `looks_like_revenue` hint. |
+| Units | Each metric has one unit (EUR, or EUR per share for EPS). A fact in any other unit is flagged `non_eur_unit` and not loaded; nothing is converted. |
+| Nil facts | A fact tagged nil is "not available": neither a value nor zero. A concept with a value wins; if only nil facts exist the metric is loaded as NULL + `is_nil`. |
+| Derived total | Total liabilities, when not tagged, is non-current + current liabilities (`derived:` lineage, `is_reported = false`). Never Assets − Equity. |
+| Periods | OIM writes the instant 31-12-2024 as `2025-01-01T00:00:00`; converted to inclusive dates. Current year only: instants on the period end, durations of 350–380 days ending on it. |
+| Fiscal year label | Calendar year holding most of the months: year ending 31-01-2025 (Inditex) = FY2024. |
+| Dimensions | Only facts without taxonomy dimensions are consolidated totals. |
+| Duplicates | Values beat nil; then the most precise (`decimals`, INF first); then document order. Disagreeing duplicates are kept and flagged. |
+| Banks and insurers | Detected from bank/insurance concepts; revenue and the current/non-current split are not expected from them. |
+| Parent names | `ifrs-full:NameOfParentEntity` / `NameOfUltimateParentOfGroup` are free text: HTML spans inside words, sentences ("La Sociedad dominante está controlada por X, domiciliada en ..."), "No hay". Cleaned into a name, "none declared" or "unparsed"; the raw text is kept. |
 
-## Design decisions
+## Decisions from my production system (no internal figures)
 
-| Decision | Rejected alternative | Why |
-|---|---|---|
-| **Long fact table** `(lei, fiscal_year, metric)` plus a pivot view | One wide table with a column per metric | Adding a metric needs a row in `metric` and a column in the pivot view, never an `ALTER TABLE` on the facts; each value carries its own lineage (`source_concept`, `decimals`, `filing_id`), and the primary key enforces one value per company-year-metric. Analysts still get the wide shape through `company_year`. |
-| **Numbered SQL migrations** with a checksum in `schema_migrations`; an edited, already-applied file is an error | `CREATE TABLE IF NOT EXISTS` at start-up, or an ORM auto-migrate | The schema history is reviewable and reproducible in CI; checksums stop silent drift between environments. Fix forward with a new file. |
-| **Validation as its own step** that only flags | Fixing values inside the transform (e.g. forcing Assets = Equity + Liabilities) | A "fix" hides the filer's error and my own mapping errors. Flags are stored next to the data, so an analyst can filter them, and a rule change never alters a number. The one blocking rule is `unique_value`: if two filings would write the same key the load stops rather than letting `ON CONFLICT` pick a winner. |
-| **Ratio of sums** for cross-company margins, over companies that report both terms | Average of company ratios | A mean of ratios weights a 5 M€ company like a 40 bn€ one and is dominated by outliers. Measured on this data: non-financial net margin FY2023 is 6.53 % as ratio of sums versus 16.83 % as a simple average (median 4.10 %). The gap comes from a few extreme ratios: five FY2023 company-years have net margins above +100 % or below −100 % (up to 1,116 %). Restricting both sums to the same companies avoids dividing one population's profit by another's revenue. |
-| **Read-only role** `sfetl_reader` with per-object `GRANT SELECT`, `default_transaction_read_only`, `statement_timeout` | The owner account for everything | Analysts and the LLM path cannot write even if a check fails. Grants are explicit, so a new table is invisible until a migration exposes it. The password is set by `sfetl migrate` from `.env`, never versioned. |
-| **Guardrails for LLM SQL**: parse with sqlglot, exactly one `SELECT`, walk the AST for write clauses (`INTO`, `FOR UPDATE`, DML inside CTEs), deny server functions (`pg_*`, `set_config`...), allow-list relations, force a `LIMIT`, then run the SQL regenerated from the checked AST in a read-only transaction | Regex/keyword blacklists, or trusting the prompt | Keyword filters miss `WITH d AS (DELETE ...) SELECT` or `SELECT ... INTO`; the prompt is not a security boundary. Executing the regenerated SQL means what runs is exactly what was checked. |
+These are the decisions of the system I built at work (financial statements of company groups
+loaded from a commercial database, and a Telegram assistant over them). The data here is
+different; the decisions are the same unless the table says otherwise.
 
-## Results (real run, 23 September 2026)
+| Decision in production | How it appears here |
+|---|---|
+| **The file is the unit of atomicity.** One transaction per file; a bad file is rolled back, logged, and the run continues; the process exits with code 1. | One transaction per **filing**; download/transform/load errors are caught per filing, listed under "Failed filings" in the report, and `sfetl run` exits 1. |
+| **Nothing is discarded silently.** Unmapped labels go to a CSV, dropped values become warnings, the validation report lists failed files. | `reports/unmapped_concepts.csv`, load warnings, failed filings and red checks in `reports/validation_report.md`, non-zero exit code. |
+| **Idempotence** by natural key + delete-and-insert of everything a file owns. | Upserts on LEI / filings.xbrl.org id / company-year; facts, flags and ownership statements replaced by `filing_id`. Loading twice leaves the database identical (tested). |
+| **Surrogate keys, natural keys UNIQUE.** A natural key can be wrong at the source; integers are cheaper in every foreign key; joins look the same. | Migration 005. The first version of this repository used natural primary keys; 005 corrects it. |
+| **Long fact table + governed catalogue**, not a free EAV: a metric is an `INSERT`, every fact references the catalogue. | `metric` (40 rows, hierarchy, unit, category) + `financial_fact` + the long view `v_financial`. |
+| **Three states: value, zero, not available.** | Nil facts → NULL + `is_nil`; a CHECK makes "nil with a value" impossible. |
+| **Collisions:** `ON CONFLICT DO NOTHING`, but count what was not inserted and warn. | Same: a second filing for an already loaded company-year inserts nothing and the warning names the filing that holds the values. (The first version blocked the whole load instead; that is gone.) |
+| **Validation after loading, in the database:** coverage, orphans, "no file without facts", golden figures checked by hand, acceptance queries printed in the report. | `validate_db.py`, plus the 9 rules on the filers' data before loading. Golden figures are versioned here because they come from public reports. |
+| **Trust the data, not the label; NULL before a disguised figure.** In production a group figure was NULL unless consolidated accounts existed, rather than an individual company's figure passed off as the group's. | `is_reported = false` on every derived value; ratios only from reported values, NULL otherwise; no cross-company aggregate views (the "ratio of sums" view of the first version was not a production decision and was removed, migration 004). |
+| **Ownership as a graph, two passes:** store each edge as declared, resolve the counterparty by identifier, else by normalised name, keep what does not resolve, mark contradictions instead of choosing a direction. | ESEF parent names (pass 1) + GLEIF Level 2 (pass 2, by LEI) → `ownership`; `v_ownership` marks self-references and cycles as `contradictory`. |
+| **Assistant: intents first.** The LLM only classifies the question against a catalogue of fixed, tested, parameterised queries over curated views; parameters are bound and filtered to the declared ones; a missing one is asked for; genuine doubt → A/B buttons; free SQL only when nothing fits; the LLM never sees data; everything logged, uncovered questions reviewed and promoted to intents. | Same design, 22 intents (`ask/intents.py`). One improvement: in production the "not verified" warning of a free-SQL answer sat behind a button when there were rows; here it is **always in the answer text**. |
+| **Least privilege.** The assistant's role reads curated views (and simple lookups), never raw facts; grants are explicit, no default privileges; it writes only to its own schema, with column-level UPDATE. | `sfetl_assistant`: SELECT on the 7 `v_*` views, `assistant.*` with `UPDATE (rating)` / `UPDATE (pages)` only. Analysts use `sfetl_reader`. |
+| **The RLS trap.** A table with RLS and no policy returns 0 rows without error; views bypass RLS because they run as their owner. | Migration 010 + `tests/integration/test_roles.py` proves both: 0 rows on a granted base table, data through the view. |
+| **Test every path with the real role.** A missing column GRANT once broke a button in production and was found by a user. | `tests/integration/test_smoke_intents.py` (CI): every intent and every assistant write, connected as `sfetl_assistant`. |
+| **Forward-only migrations with a header explaining why.** In production the runner recorded migrations by file name, which let two files share a number. | Version + checksum + advisory lock; duplicate versions refused; editing an applied migration refused (tested). Every migration from 004 explains its reason. |
+| **SQL guardrails.** In production: regular expressions and a keyword deny-list, an allow-list of relations shared with the prompt, a forced LIMIT, a read-only transaction and a statement timeout. | Same layers, but the first one parses the SQL into an AST (sqlglot) instead of matching text: a text filter misses `WITH d AS (DELETE …) SELECT` or `SELECT … INTO` and refuses a harmless `'DELETE'` literal; only the SQL regenerated from the checked tree runs. |
+| **Model.** Production used a cloud model (Gemini flash-lite) with JSON-schema output and temperature 0. | A swappable provider. Default: local Ollama `qwen3:4b` (`think: false`, `format` = the JSON schema, temperature 0). `SFETL_LLM_PROVIDER=gemini` uses the production-style setup (implemented and unit-tested with recorded responses; not run against the live API here). |
+
+## Re-measured here on public data
+
+All numbers below come from runs on 23 September 2026 on a laptop (PostgreSQL 16 in Docker,
+Python 3.13).
 
 ### Pipeline
 
-Commands, on a database recreated from scratch (`docker compose down -v`, `up -d`):
-`sfetl migrate` then `sfetl run` (started 14:29:28). Full output: `reports/run_summary.json`.
+`sfetl migrate` (it upgraded the database of the first version: migrations 004–010 applied on
+top of 001–003), then `sfetl run` (GLEIF downloaded at 17:27; the final run, 17:53, read it from
+the cache: `--gleif-offline`). Output: `reports/run_summary.json`, `reports/validation_report.md`,
+`reports/unmapped_concepts.csv`. Exit code 0.
 
 | | |
 |---|---|
-| Spanish filings in the index (`country = ES`) | 542 |
-| Fiscal years selected (two latest with ≥ 20 filings) | 2023, 2024 |
-| Filings in those years / selected (latest per company-year) | 233 / 230 (3 company-years had two reports) |
-| Companies | 125 (11 banks or insurers) |
-| xBRL-JSON files | 230, 171 MB gzipped, 0 failures |
-| Numeric facts read | 111,260 |
-| Duplicate groups resolved (all consistent) | 655 |
-| Values loaded into `financial_fact` | 2,130 |
-| Time: transform / load | 23.5 s / 1.4 s |
+| Spanish filings in the index / fiscal years selected | 542 / FY2023 and FY2024 (the two latest with ≥ 20 filings) |
+| Filings selected (latest per company-year) / failed | 230 / 0 |
+| Companies (banks or insurers) | 125 (11) |
+| Numeric facts read / of which nil | 111,370 / 110 |
+| Duplicate groups resolved (all consistent) | 856 |
+| Values loaded into `financial_fact` / derived (`is_reported = false`) / nil | 7,398 / 145 / 0 |
+| Values not inserted because another filing held them | 0 |
+| Extension facts listed in `unmapped_concepts.csv` | 6,472 |
+| Checks after loading (in the database) | 27 of 27 passed |
+| Time: transform / load / ownership pass | 118 s / 8.6 s / 2.1 s (transform took 21–118 s across the five runs of the day; the machine was shared) |
+| GLEIF download + resolution (125 LEIs, 1 s between requests) | 536 s, once; cached under `data/gleif/` |
 
-The 230 files were downloaded earlier the same day by the same extract code
-(`extract.download_filing`, 1 s between requests: 328 s); the recorded run read them from the
-local cache (`downloaded_now: 0`).
+Coverage per metric, company-years out of 230: total assets, equity and cash 228; profit for
+the year 220; revenue 190 (4 from `RevenueFromContractsWithCustomers`); current assets and
+current liabilities 200; … ; profit from discontinued operations 80 (only filers that have
+them). Full list in `run_summary.json`.
 
-Coverage per metric (company-years out of 230): total assets 228, total equity 228, cash 228,
-total liabilities 222 (145 of them derived from non-current + current), net profit 220, net
-profit attributable 215, current assets 200, current liabilities 200, operating profit 199,
-revenue 190 (4 from `RevenueFromContractsWithCustomers`).
-
-### Validation (`reports/validation_report.md`)
+### Validation of the filers' data (before loading)
 
 | Rule | Severity | Pass | Flagged | N/A |
 |---|---|---:|---:|---:|
-| `balance_identity` (0.1 % or rounding tolerance) | error | 209 | 13 | 8 |
+| `balance_identity` (0.1 % or rounding) | error | 209 | 13 | 8 |
 | `missing_core_metric` | warning | 200 | 30 | 0 |
 | `sign_check` | error | 228 | 0 | 2 |
 | `component_bounds` | error | 227 | 1 | 2 |
+| `subtotal_check` (7 catalogue identities) | warning | 174 | 54 | 2 |
 | `period_consistency` | warning | 230 | 0 | 0 |
-| `non_eur_unit` | warning | 228 | 2 | 0 |
+| `non_eur_unit` | warning | 223 | 7 | 0 |
 | `inconsistent_duplicate` | warning | 230 | 0 | 0 |
-| `unique_value` | error | 230 | 0 | 0 |
+| `nil_fact` | info | 230 | 0 | 0 |
 
-68 issues stored in `validation_issue` (14 errors, 54 warnings). What the flags turned out to be,
-checked against the raw facts of each filing:
+What the flags are, checked against the raw facts with a script on the same day:
 
-- **Balance identity, 13 flags.** 4 company-years tag `ifrs-full:Liabilities` with the value
-  of *total equity and liabilities* (it equals total assets): Realia FY2024, Libertas 7 FY2023
-  and FY2024, Innovative Solutions Ecosystem FY2023. In 4 more (Amper FY2023/FY2024, Global
-  Dominion FY2023/FY2024) the gap equals exactly the tagged
-  `LiabilitiesIncludedInDisposalGroupsClassifiedAsHeldForSale`, presented outside the subtotal
-  the filer tagged as `CurrentLiabilities`, so the derived total misses it. The other 5 are
-  small gaps of 0.13–0.30 % that the tagged facts alone do not explain (CIE Automotive,
-  CEVASA, Tubos Reunidos).
-- **Component bounds, 1 flag**: the same Innovative Solutions filing (current liabilities larger
-  than the mis-tagged total).
-- **Missing core metrics, 40 in 30 filings**: revenue 18 (16 company-years of non-financial
-  companies that tag revenue with an extension concept, a broader IFRS concept such as
-  `RevenueAndOperatingIncome`, or only by component such as `RentalIncome`; Repsol, Cellnex,
-  Colonial and Meliá are among them; plus the 2 AUD filings), net profit 10, total
-  liabilities 8, equity 2, assets 2.
-- **Non-EUR, 2 filings**: Berkeley Energia reports in AUD; nothing of it is loaded.
-- **Period consistency**: the period detected from the facts matched the index in all 230.
+- **Balance identity, 13:** 4 filings tag `ifrs-full:Liabilities` with the value of total equity
+  and liabilities (Realia FY2024, Libertas 7 FY2023/FY2024, Innovative Solutions Ecosystem
+  FY2023); in 4 (Amper and Global Dominion, both years) the gap equals exactly the tagged
+  liabilities held for sale, presented outside the tagged current-liability subtotal; 5 are
+  gaps of 0.13–0.30 % the tagged facts do not explain (CIE Automotive, CEVASA, Tubos Reunidos).
+- **Subtotal checks, 63 flags in 54 filings:** profit attribution 32, equity and liabilities 9,
+  equity split 7, tax bridge 6, liabilities split 4, assets split 4, continuing + discontinued 1.
+  In 27 of the 32 profit-attribution flags, profit = parent share **minus** the
+  non-controlling-interest share: the NCI line is tagged with the opposite sign.
+- **Non-EUR units, 7 filings:** Berkeley Energia reports in AUD (2 filings, nothing of it
+  loaded); 5 filings of Spanish companies that report in euros tag basic EPS with the unit
+  "AED per share" (UAE dirham), so their EPS is not loaded.
+- **Revenue gap:** 16 filings of non-financial companies have no IFRS revenue; 4 of them tag an
+  extension concept that looks like a revenue line (Meliá, `RevenuesNotIncludingFinancialIncome`,
+  both years; Ercros FY2023, `Ingresos`; Urbas FY2023, `ImporteNetoDeLaCifraDeNegocios`). They
+  are listed in the CSV, not mapped.
 
-### Example: top 5 companies by revenue, fiscal year 2024
+### Golden figures (read from the published XHTML, not from the xBRL-JSON)
 
-| Company | Revenue (M€) | Net profit (M€) | Net margin | Source filing (`fxo_id`) |
-|---|---:|---:|---:|---|
-| IBERDROLA SA | 44,739 | 5,948 | 13.29 % | 5QK37QC7NWOJ8D7WVQ45-2024-12-31-ESEF-ES-0 |
-| ACS ACTIVIDADES DE CONSTRUCCION Y SERVICIOS, S.A. | 41,633 | 1,080 | 2.59 % | 95980020140005558665-2024-12-31-ESEF-ES-0 |
-| TELEFONICA SA | 41,315 | 209 | 0.51 % | 549300EEJH4FEPDBBR25-2024-12-31-ESEF-ES-0 |
-| INDUSTRIA DE DISEÑO TEXTIL, S.A. | 38,632 | 5,877 | 15.21 % | 549300TTCXZOGZM2EY83-2025-01-31-ESEF-ES-0 |
-| INTERNATIONAL CONSOLIDATED AIRLINES GROUP, S.A. | 32,100 | 2,732 | 8.51 % | 959800TZHQRUSH1ESL13-2024-12-31-ESEF-ES-0 |
+`golden/golden_figures.yaml`: 9 figures transcribed from the printed statements of the XHTML
+annual reports on filings.xbrl.org (line label, printed number, scale of the table heading).
+All 9 match `v_financial` after the load: Endesa FY2024 revenue (20.935 M€, the line
+"Ingresos por Ventas y Prestaciones de Servicios", not the 21.307 "INGRESOS" total above it) and
+total assets (37.345 M€); Inditex FY2024 net sales (38,632 M€) and net profit (5,877 M€); Iberdrola
+FY2024 total equity (61.051 M€); Bankinter FY2024 total assets (121.971.823 thousand €);
+Telefónica FY2023 cash (7,151 M€); Prosegur Cash FY2024 revenue (2.089.879 thousand €) and
+profit for the year (91.046 thousand €). The author should re-check them against the rendered
+reports.
 
-Read with the flags in mind: Repsol is absent because it does not tag `ifrs-full:Revenue`.
-Aggregate net margin of non-financial companies (ratio of sums): 6.53 % in FY2023 (96
-companies), 7.87 % in FY2024 (84 companies).
+### Ownership
 
-### Ask your data: NL→SQL execution accuracy
+458 ESEF statements (2 per filing; 1 filing has none) and 250 GLEIF relationships (125 LEIs
+× direct/ultimate). In `v_ownership` (latest ESEF statement per company + GLEIF):
 
-Setup: Ollama at `127.0.0.1:11434`, `qwen2.5:7b-instruct` (Q4_K_M), temperature 0, seed 42,
-laptop RTX 3070. A question passes when the generated query returns the same rows as the
-reference query (numbers rounded to 4 decimals; order compared only for ranking questions).
-Extra columns are accepted if some choice of columns reproduces the reference exactly;
-"strict" also requires the same columns. Commands: `sfetl eval --questions <file> --prompt
-<v1|v2> --out reports/<name>.json`, run at 14:30–14:31.
+| Source, relation | Parent is a loaded company | Parent outside the data (kept, by name or LEI) | Self-reference (contradictory) | None declared / unparsed |
+|---|---:|---:|---:|---:|
+| ESEF, direct (124 companies) | 3 | 21 | 98 | 0 / 2 |
+| ESEF, ultimate (124) | 2 | 33 | 88 | 1 / 0 |
+| GLEIF, direct (125) | 5 | 22 | – | 98 (reporting exceptions) |
+| GLEIF, ultimate (125) | 3 | 24 | – | 98 |
 
-| Question set | Prompt | Execution accuracy | Strict | English | Spanish |
-|---|---|---:|---:|---:|---:|
-| `eval/questions.yaml` (26) | v1 | **16/26 (61.5 %)** | 7/26 | 12/16 | 4/10 |
-| `eval/questions.yaml` (26) | v2 | 18/26 (69.2 %) | 10/26 | 12/16 | 6/10 |
-| `eval/questions_holdout.yaml` (12) | v1 | 8/12 (66.7 %) | 5/12 | 5/6 | 3/6 |
-| `eval/questions_holdout.yaml` (12) | v2 | **10/12 (83.3 %)** | 9/12 | 5/6 | 5/6 |
+- Cycles: 0. Self-references: 186 (the filer names itself; most head their own group, but an
+  entity cannot be its own parent, so they are marked, not interpreted).
+- GLEIF reporting exceptions: `NON_CONSOLIDATING` 88/89, `NO_KNOWN_PERSON` 7/6,
+  `NATURAL_PERSONS` 2/2, `NO_LEI` 1/1 (direct/ultimate).
+- Where both sources name a parent (34 company-relations), the ESEF name matches GLEIF's legal
+  name in 21; the rest differ for real reasons that the view keeps side by side (a Spanish
+  branch vs the company, an intermediate vs the ultimate holding, the register today vs the
+  report at year end).
+- Parents found among the loaded companies: Prosegur Cash → Prosegur, Acciona Energía →
+  Acciona, Santander Consumer Finance → Banco Santander (ESEF and GLEIF); Aedas Homes → Neinor
+  Homes and Inmocemento → FCC (GLEIF only).
 
-How to read it honestly:
-- **v1** is the prompt as first written; its run on the 26 questions is the untuned baseline.
-  I then read the failures and wrote **v2** (five extra rules, one per failure class, in
-  `src/sfetl/ask/prompt.py`). Because v2 was written looking at those 26 questions, its 69.2 %
-  there is optimistic. The 12 **held-out** questions were written after the first run and
-  before v2, and never used for tuning: 8/12 → 10/12 is the fairer estimate of the change.
-- Samples are small: one held-out question is 8.3 points. v2 fixed 5 of the 26 and **broke 3**
-  that v1 answered (q13, q19, q21); on the held-out set it fixed 3 and broke 1 (h06).
-- The v1 evaluation was run twice (finished at 14:24 and 14:30, the second on the rebuilt
-  database) and produced identical SQL for all 26 questions.
-- The guardrail rejected none of the 76 generated queries: every one was a single SELECT.
-  Its rejections are covered by unit tests instead. Median model time per question 0.9 s once
-  the model is loaded.
+### Assistant
 
-Failure categories observed, from reading each of the 24 failing queries (4 runs):
+- **Smoke test with the real role** (`sfetl smoke`, 18:00, on the loaded database): 33/33 OK —
+  connected as `sfetl_assistant`; the 22 intents run (3 returned 0 rows for the sample company,
+  which is allowed); the 10 writes and refusals on its own schema behave (log, rate, A/B choice,
+  pages; rewriting a logged question and reading `financial_fact` are refused).
+- **Routing benchmark** (`sfetl bench`, `eval/routing_cases.yaml`: 42 synthetic cases in English
+  and Spanish — 35 intent, 4 free SQL, 3 decline — with acceptable alternatives; local
+  `qwen3:4b`, 24 September 2026): **38/42**. Intent 33/35 (all 27 expected parameters extracted
+  correctly), free SQL 2/4, decline 3/3; median classification 0.9 s. Output:
+  `reports/routing_bench.json`.
+  - The first run gave 33/42, with **0 of the 7** out-of-catalogue questions routed to "no
+    intent": `intent_id` was constrained to the catalogue ids (or null), and under
+    grammar-constrained decoding the model never produced null — "What's the weather in Madrid
+    tomorrow?" went to `list_metrics`. Production declared `intent_id` as a nullable string and
+    read an unknown id as no intent. With that schema the same model scored 38/42, intents
+    unchanged (33/35); the repository now uses it.
+- **Execution accuracy of the free-SQL fallback** (`sfetl eval-fallback`,
+  `eval/fallback_questions.yaml`, 12 questions no intent covers; local `qwen3:4b`): **3/12**
+  (2 with exactly the reference columns). Failures: 4 execution errors (invented columns such as
+  `net_profit_parent`, broken table aliases, a date compared with `'31-12'`), 1 query the
+  guardrail could not parse, 2 wrong values, 2 wrong row counts. Output:
+  `reports/fallback_eval.json`. Every reference query was run against the loaded database
+  first; two questions were reworded where a literal reading allowed two answers.
 
-| Category | Count | Example |
-|---|---:|---|
-| Column or relation that does not exist | 12 | `company_name` in `financial_fact`; `net_margin` read from `company_year` |
-| Cross-company ratio over mismatched populations | 5 | `sum(net_profit)/sum(revenue)` including companies with no revenue, instead of `year_aggregate_ratios` |
-| Company not found | 3 | `ILIKE 'iberdrola'` without wildcards; `'%inditex%'` (brand, not the legal name); `'%respol%'` typo |
-| Wrong source or meaning | 2 | "companies that filed" counted from figures (107) instead of filings (108); "largest loss" sorted descending |
-| Missing filter | 1 | summed every metric of `financial_fact` instead of `metric = 'cash'` |
-| Type error | 1 | compared a date with the string `'31-12'` |
+A 4B local model is reliable at choosing a prepared query and not at writing SQL. That is the
+case for the design: fixed intents answer, free SQL is the exception and always says it was
+generated on the fly and not verified, and the query log shows which free-SQL questions keep
+coming back so they can become intents. Production used a cloud model for both steps; it was
+not measured here.
 
-Example (`sfetl ask`, prompt v2, 23-09-2026 14:33; the SQL line is wrapped here):
+What an intent answer looks like (the `company_parent` intent run as `sfetl_assistant` against
+the loaded data, without the model; the title repeats the question and the caveat always goes
+with it):
 
 ```
-$ sfetl ask "¿Qué empresas no financieras tuvieron el mayor margen operativo en 2024? Dame las 5 primeras."
--- SQL (2.0s)
-WITH company_year_ratios_2024 AS (SELECT lei, company_name, operating_margin FROM company_year_ratios
-WHERE fiscal_year = 2024 AND is_financial = FALSE ORDER BY operating_margin DESC NULLS LAST LIMIT 5)
-SELECT lei, company_name, operating_margin FROM company_year_ratios_2024 LIMIT 200
+Parent and ultimate parent of Prosegur Cash
 
-lei                  | company_name                        | operating_margin
----------------------+-------------------------------------+-----------------
-959800CJH35NNZQQW653 | CORPORACION FINANCIERA ALBA, S.A.   | 6.0397
-959800PM2YJU406K2789 | SOLARIA ENERGIA Y MEDIO AMBIENTE SA | 0.8909
-959800L8KD863DP30X04 | MERLIN PROPERTIES SOCIMI, S.A.      | 0.7593
-95980020140005821826 | LIBERTAS 7 SOCIEDAD ANONIMA         | 0.7015
-959800RGBUGJA3UVZZ88 | REALIA BUSINESS, S.A.               | 0.5930
+1. PROSEGUR CASH, S.A.
+   Relation: direct
+   Source: esef
+   FY: 2024
+   Parent: PROSEGUR COMPAÑIA DE SEGURIDAD, S.A.
+   Parent LEI: 549300N94L4D5NDBFG97
+   Parent loaded here: yes
+   Resolved by: lei
+...
+4. PROSEGUR CASH, S.A.
+   Relation: ultimate
+   Source: gleif
+   Parent: GUBEL SL
+   Parent LEI: 959800XR464F2Z0ZZL26
+   Parent loaded here: no
+   Resolved by: unresolved
+
+Note: ESEF parent names are free text as tagged. 'self_reference' means the filing names the
+company itself as its parent (it heads its own group); 'cycle' means two companies name each
+other. GLEIF rows are as reported to the LEI register. Nothing here is corrected.
 ```
 
-The SQL is right; the answer still needs judgement (an investment holding with little revenue
-tops the list).
+A free-SQL answer always starts with: *NOT VERIFIED: generated on the fly by the language model
+from the schema; it is not one of the prepared, tested queries. Check it before relying on it.*
+
+### Backup and restore
+
+`sfetl backup --docker` (dump of 172,932 bytes) then `sfetl restore <dump> --docker --dbname
+sfetl_restore_check`: the row counts of all 11 tables (including `schema_migrations` and the
+assistant schema) are identical in the restored database. In CI the same round trip runs as an
+integration test with `pg_dump`/`pg_restore` 16.
 
 ## How to run
 
-Requirements: Python ≥ 3.11, Docker, and (for `ask`/`eval`) Ollama with `qwen2.5:7b-instruct`.
+Requirements: Python ≥ 3.11, Docker, and for `ask`/`bench`/`eval-fallback` Ollama with
+`qwen3:4b` (or `SFETL_LLM_PROVIDER=gemini` and a key).
 
 ```bash
-cp .env.example .env                 # then change both passwords
+cp .env.example .env                 # then change the three passwords
 docker compose up -d                 # PostgreSQL 16 on 127.0.0.1:55432
 python -m venv .venv
-.venv/Scripts/python -m pip install -e ".[dev]"    # Linux/macOS: .venv/bin/python
-.venv/Scripts/sfetl migrate          # apply db/migrations, enable the read-only login
-.venv/Scripts/sfetl run              # first run downloads ~230 files (~171 MB), 1 s apart
-.venv/Scripts/sfetl ask "Which 5 companies had the highest revenue in 2024?"
-.venv/Scripts/sfetl eval --questions eval/questions_holdout.yaml --out reports/eval_holdout_v2.json
+.venv/Scripts/python -m pip install -e ".[dev]"   # Linux/macOS: .venv/bin/python
+.venv/Scripts/sfetl migrate          # apply db/migrations, enable the two role logins
+.venv/Scripts/sfetl run              # ~230 files (~171 MB) + GLEIF, 1 s between requests
+.venv/Scripts/sfetl smoke            # every intent and assistant write, as sfetl_assistant
+.venv/Scripts/sfetl ask "Who owns Prosegur Cash?" --session me
+.venv/Scripts/sfetl ask "B" --session me          # answer an A/B question
+.venv/Scripts/sfetl rate 12 up                    # rate a logged answer
+.venv/Scripts/sfetl report uncovered              # questions no intent answered
+.venv/Scripts/sfetl bench                         # routing benchmark (needs the LLM)
+.venv/Scripts/sfetl backup --docker && .venv/Scripts/sfetl restore backups/<file>.dump --docker
 docker compose down                  # keeps the data volume
 ```
 
-`sfetl run --years 2023 2024 --max-companies 20` limits the scope; `--no-load` stops after
-validation; `--refresh-index` re-reads the index. HTTPS uses the operating-system trust store
-(`truststore`), so it also works behind TLS-inspecting proxies or antivirus.
+`sfetl run` options: `--years 2023 2024`, `--max-companies 20`, `--no-load`, `--refresh-index`,
+`--no-gleif`, `--gleif-offline`. `sfetl telegram --port 8080` serves the optional webhook
+(`TELEGRAM_*` variables in `.env.example`); it is tested with a fake Telegram API and has not
+been run against Telegram from this repository. HTTPS uses the operating-system trust store
+(`truststore`).
 
 ## Tests
 
 ```bash
-pytest -m "not integration"   # 92 unit tests, offline
-pytest -m integration         # 6 tests against PostgreSQL; skipped if it is not reachable
+pytest -m "not integration"   # 256 unit tests, offline; the LLM is scripted
+pytest -m integration         # 35 tests against PostgreSQL; skipped if it is not reachable
 ```
 
-Unit tests use trimmed real filings in `tests/fixtures/` (84 KB: Endesa, Inditex, Bankinter,
-Amper, Realia, Berkeley Energia; rebuilt with `tests/fixtures/build_fixtures.py`) and cover the
-period parser, concept mapping, decimals, period and fiscal-year selection, dimension filtering,
-duplicate resolution, currency handling, every validation rule, the SQL guardrail (INSERT,
-UPDATE, DELETE, DROP, multiple statements, `SELECT INTO`, DML in CTEs, server functions,
-catalog access) and the evaluation matcher. Integration tests create a throw-away database and
-check that migrations apply once and refuse edited files, that loading twice leaves the data
-identical, that the ratio view is a ratio of sums, and that the reader role cannot write.
-CI (`.github/workflows/ci.yml`): ruff + unit tests on Python 3.11 and 3.12, then integration
-tests against a `postgres:16` service. Local results on 23-09-2026: 92 + 6 passed (Python 3.13);
-the workflow itself has not run yet because the repository has no remote.
+Unit tests use trimmed real filings in `tests/fixtures/` (Endesa, Inditex, Bankinter, Amper,
+Realia, Berkeley Energia, Prosegur, Prosegur Cash; rebuilt with
+`tests/fixtures/build_fixtures.py`). They cover the xBRL-JSON reader (nil facts included), the
+catalogue (and that the migration seeds the same 40 codes), period and unit selection,
+duplicates, every validation rule, parent-name cleaning and resolution, per-filing isolation of
+failures, every intent's SQL (declared parameters only, curated views only), parameter
+coercion, the classifier's JSON schema, both LLM providers against recorded responses, the
+guardrails, rendering and paging, the routing benchmark harness and the Telegram adapter.
+
+Integration tests create a throw-away database per test: migrations (apply once, refuse an
+edited file, upgrade from the first published schema), the catalogue in the database equals
+the Python one, loading twice is identical, collisions are counted, a failing filing leaves
+nothing behind, derived values are flagged, ownership resolution and cycle marking, the
+post-load checks (green, and red on a failed filing or a wrong golden figure), the roles and
+the RLS trap, the assistant end to end with a scripted model, the smoke test, and backup/restore.
+
+Local results on 23-09-2026 (Python 3.13): 256 unit passed; 34 integration passed and 1 skipped
+(the backup round trip needs `pg_dump` on the host; it was run with `--docker` instead, above).
+`ruff check` and `ruff format --check` clean. CI (`.github/workflows/ci.yml`): ruff + unit tests
+on Python 3.11–3.13, then the integration tests and the smoke test against a `postgres:16`
+service.
 
 ## Limitations and next steps
 
-- **Coverage of revenue** depends on companies tagging `ifrs-full:Revenue` (or
-  `RevenueFromContractsWithCustomers`); 16 non-financial company-years, Repsol among them, do
-  not. Next: follow the anchoring relationships in each report package to map extension
-  concepts to their IFRS parent, and decide case by case on broader or partial IFRS concepts.
-- **Consolidated only**, current year only, EUR only. Prior-year comparatives (and restatements)
-  are ignored; an AUD filer is flagged, not converted.
-- **Which report wins** when a company-year has two is a heuristic (last added): the index does
-  not say whether the second is an amendment or a translation.
-- **Held-for-sale liabilities** outside the tagged current-liability subtotal leave the derived
-  total short; the validation catches it, the transform does not correct it.
-- **Evaluation** is small (38 questions) and single-model; the next step is more held-out
-  questions, a second model, and a check that the answer's company is the one intended when
-  names are ambiguous.
+- **Revenue** depends on `ifrs-full:Revenue` (or `RevenueFromContractsWithCustomers`); 16
+  non-financial filings have neither. Next: follow the anchoring relationships in each report
+  package to map extension concepts to their IFRS parent.
+- **Consolidated, current year, EUR only.** Comparatives and restatements are ignored; an AUD
+  filer and AED-per-share EPS tags are flagged, not converted.
+- **Which report wins** when a company-year has two is a heuristic (last added to the index); a
+  newer filing for an already loaded year is counted as a collision, not applied: replacing it
+  is a manual decision.
+- **Ownership by name** matches exact normalised names only; brand names used as parent names
+  ("Nextil", "DESA", "CAF") stay unresolved, and a branch is not its company.
+- **The assistant's routing accuracy is not measured yet** for this version (see above); the
+  routing and fallback sets are small and synthetic.
 - The bank/insurer detection is a marker list checked against these filings, not a sector code.
 
-## Data source and terms
+## Data sources and terms
 
-Filings come from [filings.xbrl.org](https://filings.xbrl.org), run by XBRL International,
-through its public JSON:API (`/api/filings`). For ESEF it collects the reports from each
-country's Officially Appointed Mechanism (for Spain, the CNMV) and publishes xBRL-JSON produced
-with the Arelle processor. Its [about page](https://filings.xbrl.org/docs/about) states: "At
-present, there are no restrictions on the ways that the data can be used" (read on 23-09-2026).
-This project caches every download under `data/` (gitignored), sends a descriptive
-User-Agent and waits 1 s between requests. The figures are the companies' own filings as
-tagged; they are not audited by this project, and the validation flags show where they are
-inconsistent.
+- [filings.xbrl.org](https://filings.xbrl.org), run by XBRL International, public JSON:API
+  (`/api/filings`); for ESEF it collects reports from each country's Officially Appointed
+  Mechanism (for Spain, the CNMV) and publishes xBRL-JSON produced with Arelle. Its
+  [about page](https://filings.xbrl.org/docs/about): "At present, there are no restrictions on
+  the ways that the data can be used" (read on 23-09-2026).
+- [GLEIF](https://www.gleif.org) LEI records and Level 2 relationship data, API
+  `api.gleif.org`: "The data available through the Access Service are provided under the CC0
+  licence" ([terms](https://www.gleif.org/en/meta/lei-data-terms-of-use/), read on 23-09-2026).
+
+Every download is cached under `data/` (gitignored), with a descriptive User-Agent and 1 s
+between requests. The figures are the companies' own filings as tagged; they are not audited
+by this project, and the validation flags show where they are inconsistent.
 
 ## About
 
-Rebuild on public data of a system I designed and ran in production at work (financial
-statements of automotive dealer groups). It contains no proprietary code or data. Built with
-AI-assisted development; design decisions, evaluation and review are mine.
+Rebuild on public data of the financial-statements ETL and the natural-language assistant I
+built at work. No proprietary code or data. Built with AI-assisted development; the design
+decisions come from my production system and every figure here was re-measured on public data.
 
 License: MIT.
