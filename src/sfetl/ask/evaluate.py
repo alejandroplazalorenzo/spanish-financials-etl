@@ -1,39 +1,45 @@
-"""Execution-accuracy evaluation of the ask module.
+"""Execution accuracy of the free-SQL fallback (and only of the fallback).
 
-A question passes when the generated query returns the same result as the reference query:
+Intents are fixed, tested queries: their correctness is checked by the smoke test and by the
+integration tests, not by a model. The only SQL a model writes is the fallback's, so this is
+where execution accuracy applies: for questions that no intent covers, does the generated query
+return the same rows as a reference query?
 
 * values are normalised (numbers rounded to 4 decimals, text trimmed, dates as ISO strings);
 * rows are compared as a multiset, or as a list when the question sets ``ordered: true``;
-* ``strict`` requires the same columns in the same order; ``match`` (the headline number) also
-  accepts extra columns in the generated result, as long as some choice of its columns
-  reproduces the reference result exactly. Asking "which company..." and getting the name plus
-  the revenue is a correct answer; getting another company is not.
+* ``strict`` requires the same columns; ``match`` also accepts extra columns when some choice of
+  them reproduces the reference exactly.
+
+The reference queries in ``eval/fallback_questions.yaml`` are reviewable SQL over the curated
+views. They were written for this rebuild and must be reviewed by the author before any
+accuracy figure computed with them is quoted.
 """
 
 from __future__ import annotations
 
 import itertools
-import json
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+import psycopg
 import yaml
 
-from sfetl.ask.guardrails import guard_sql
-from sfetl.ask.prompt import DEFAULT_PROMPT, build_system_prompt
-from sfetl.ask.runner import AskResult, QueryResult, ask, company_names, run_readonly
-from sfetl.config import ollama_model
+from sfetl.ask.classify import write_free_sql
+from sfetl.ask.guardrails import UnsafeSQLError, guard_sql
+from sfetl.ask.llm import LLMError, LLMProvider
+from sfetl.ask.service import FREE_SQL_MAX_ROWS, FREE_SQL_TIMEOUT_MS, QueryOutcome, run_read_only
+from sfetl.db import connect_assistant
 
 MAX_PERMUTATIONS = 50_000
 
 
 @dataclass(frozen=True)
-class Question:
+class FallbackQuestion:
     id: str
     question: str
     lang: str
@@ -41,10 +47,10 @@ class Question:
     ordered: bool = False
 
 
-def load_questions(path: Path) -> list[Question]:
+def load_questions(path: Path) -> list[FallbackQuestion]:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     return [
-        Question(
+        FallbackQuestion(
             id=str(q["id"]),
             question=q["question"],
             lang=q.get("lang", "en"),
@@ -65,7 +71,7 @@ def normalize(value: Any) -> Any:
     return str(value).strip()
 
 
-def _rows(result: QueryResult, columns: Sequence[int] | None = None) -> list[tuple[Any, ...]]:
+def _rows(result: QueryOutcome, columns: Sequence[int] | None = None) -> list[tuple[Any, ...]]:
     idx = list(range(len(result.columns))) if columns is None else list(columns)
     return [tuple(normalize(row[i]) for i in idx) for row in result.rows]
 
@@ -74,7 +80,7 @@ def _same(a: list[tuple[Any, ...]], b: list[tuple[Any, ...]], ordered: bool) -> 
     return a == b if ordered else Counter(a) == Counter(b)
 
 
-def compare(reference: QueryResult, generated: QueryResult, ordered: bool) -> tuple[bool, bool]:
+def compare(reference: QueryOutcome, generated: QueryOutcome, ordered: bool) -> tuple[bool, bool]:
     """Return (strict, match)."""
     ref = _rows(reference)
     if len(ref) != len(generated.rows):
@@ -95,83 +101,60 @@ def compare(reference: QueryResult, generated: QueryResult, ordered: bool) -> tu
     return False, False
 
 
-def failure_category(res: AskResult, reference: QueryResult, match: bool) -> str | None:
-    if match:
-        return None
-    if res.error_kind:
-        return {
-            "llm": "llm_error",
-            "guardrail": "rejected_by_guardrail",
-            "execution": "execution_error",
-        }[res.error_kind]
-    assert res.result is not None
-    if not res.result.rows and reference.rows:
-        return "empty_result"
-    if len(res.result.rows) != len(reference.rows):
-        return "wrong_row_count"
-    return "wrong_values"
-
-
-def _jsonable(result: QueryResult | None) -> dict[str, Any] | None:
-    if result is None:
-        return None
-    return {
-        "columns": result.columns,
-        "rows": [[str(v) if v is not None else None for v in r] for r in result.rows[:20]],
-    }
-
-
-def run_eval(questions: Sequence[Question], prompt_version: str = DEFAULT_PROMPT) -> dict[str, Any]:
-    prompt = build_system_prompt(company_names(), prompt_version)
+def run_fallback_eval(
+    provider: LLMProvider,
+    questions: Sequence[FallbackQuestion],
+    connect: Callable[[], psycopg.Connection] = connect_assistant,
+) -> dict[str, Any]:
     records: list[dict[str, Any]] = []
-    for q in questions:
-        reference = run_readonly(guard_sql(q.reference_sql))
-        res = ask(q.question, system_prompt=prompt)
-        strict, match = (False, False)
-        if res.result is not None:
-            strict, match = compare(reference, res.result, q.ordered)
-        records.append(
-            {
-                "id": q.id,
-                "lang": q.lang,
-                "question": q.question,
-                "ordered": q.ordered,
-                "match": match,
-                "strict": strict,
-                "category": failure_category(res, reference, match),
-                "error": res.error,
-                "generated_sql": res.sql_generated,
-                "executed_sql": res.sql_executed,
-                "reference_sql": q.reference_sql.strip(),
-                "reference_result": _jsonable(reference),
-                "generated_result": _jsonable(res.result),
-                "llm_seconds": round(res.llm_seconds, 1),
-            }
-        )
-        print(f"{q.id} {'PASS' if match else 'FAIL'} {records[-1]['category'] or ''}", flush=True)
+    with connect() as conn:
+        conn.autocommit = True
+        for q in questions:
+            reference = run_read_only(
+                conn, guard_sql(q.reference_sql, FREE_SQL_MAX_ROWS), None, FREE_SQL_TIMEOUT_MS
+            )
+            record: dict[str, Any] = {"id": q.id, "lang": q.lang, "question": q.question}
+            outcome = None
+            try:
+                generated = write_free_sql(provider, q.question)
+                if generated is None:
+                    record["category"] = "declined"
+                else:
+                    record["generated_sql"] = generated.sql
+                    record["seconds"] = round(generated.seconds, 1)
+                    safe = guard_sql(generated.sql, FREE_SQL_MAX_ROWS)
+                    outcome = run_read_only(conn, safe, None, FREE_SQL_TIMEOUT_MS)
+            except LLMError as err:
+                record["category"] = "llm_error"
+                record["error"] = str(err)
+            except UnsafeSQLError as err:
+                record["category"] = "rejected_by_guardrail"
+                record["error"] = str(err)
+            except psycopg.Error as err:
+                record["category"] = "execution_error"
+                record["error"] = str(err).splitlines()[0]
+            strict, match = (False, False)
+            if outcome is not None:
+                strict, match = compare(reference, outcome, q.ordered)
+                if not match:
+                    record["category"] = (
+                        "wrong_row_count"
+                        if len(outcome.rows) != len(reference.rows)
+                        else "wrong_values"
+                    )
+            record.update(match=match, strict=strict, reference_sql=q.reference_sql.strip())
+            records.append(record)
+            print(f"{q.id} {'PASS' if match else 'FAIL'} {record.get('category', '')}", flush=True)
     total = len(records)
     matched = sum(r["match"] for r in records)
-    by_lang = {
-        lang: {
-            "n": sum(r["lang"] == lang for r in records),
-            "match": sum(r["match"] for r in records if r["lang"] == lang),
-        }
-        for lang in sorted({r["lang"] for r in records})
-    }
     return {
         "run_at": datetime.now().isoformat(timespec="seconds"),
-        "model": ollama_model(),
-        "prompt_version": prompt_version,
+        "provider": provider.name,
+        "model": provider.model,
         "questions": total,
         "match": matched,
         "strict": sum(r["strict"] for r in records),
         "accuracy": round(matched / total, 4) if total else 0.0,
-        "by_lang": by_lang,
-        "failure_categories": dict(Counter(r["category"] for r in records if r["category"])),
+        "failure_categories": dict(Counter(r.get("category") for r in records if not r["match"])),
         "records": records,
     }
-
-
-def write_eval(summary: dict[str, Any], path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")

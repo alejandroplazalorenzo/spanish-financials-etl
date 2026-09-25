@@ -1,11 +1,11 @@
 from decimal import Decimal
 
 from sfetl.ask.evaluate import compare, normalize
-from sfetl.ask.runner import QueryResult
+from sfetl.ask.service import QueryOutcome
 
 
-def qr(columns: list[str], rows: list[tuple]) -> QueryResult:
-    return QueryResult(columns=columns, rows=rows)
+def qr(columns: list[str], rows: list[tuple]) -> QueryOutcome:
+    return QueryOutcome(columns=columns, rows=rows, seconds=0.0)
 
 
 def test_numbers_are_compared_after_rounding() -> None:

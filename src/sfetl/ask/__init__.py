@@ -1,1 +1,1 @@
-"""Ask your data: natural language to one guarded, read-only SELECT."""
+"""The assistant: routes questions to fixed intents; free SQL only as a flagged fallback."""

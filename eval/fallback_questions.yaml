@@ -1,0 +1,114 @@
+# Execution accuracy of the free-SQL fallback: `sfetl eval-fallback`.
+#
+# Questions that no intent covers. The model's query is compared with the reference query
+# (src/sfetl/ask/evaluate.py). The reference SQL below was written for this rebuild from the
+# definitions of the curated views and run against the loaded database on 24-09-2026; two
+# questions were reworded where a literal reading allowed two answers (x05: a reported 0 is
+# not a result; x09: with negative equity any minority share "exceeds 20 %").
+# `ordered: true` when the order of the rows is part of the answer.
+
+- id: x01
+  lang: en
+  question: Which companies have a fiscal year that does not end on 31 December? List the company names.
+  reference_sql: |
+    SELECT DISTINCT company_name FROM v_financial
+    WHERE to_char(fiscal_year_end, 'MM-DD') <> '12-31'
+
+- id: x02
+  lang: en
+  question: How many filings have more than 10 XBRL warnings?
+  reference_sql: |
+    SELECT count(*) FROM v_filing WHERE xbrl_warnings > 10
+
+- id: x03
+  lang: en
+  question: Which companies had goodwill larger than their total equity in fiscal year 2024?
+  reference_sql: |
+    SELECT g.company_name
+    FROM v_financial g
+    JOIN v_financial e
+      ON e.lei = g.lei AND e.fiscal_year = g.fiscal_year AND e.metric_code = 'total_equity'
+    WHERE g.metric_code = 'goodwill' AND g.fiscal_year = 2024 AND g.value > e.value
+
+- id: x04
+  lang: en
+  question: Which companies had a negative operating cash flow but a positive profit for the year in 2024?
+  reference_sql: |
+    SELECT o.company_name
+    FROM v_financial o
+    JOIN v_financial p
+      ON p.lei = o.lei AND p.fiscal_year = o.fiscal_year AND p.metric_code = 'net_profit'
+    WHERE o.metric_code = 'operating_cash_flow' AND o.fiscal_year = 2024
+      AND o.value < 0 AND p.value > 0
+
+- id: x05
+  lang: en
+  question: How many companies report a non-zero profit or loss from discontinued operations in fiscal year 2024?
+  reference_sql: |
+    SELECT count(DISTINCT lei) FROM v_financial
+    WHERE metric_code = 'profit_discontinued' AND fiscal_year = 2024 AND value <> 0
+
+- id: x06
+  lang: en
+  question: Which company had the largest increase in cash and cash equivalents from fiscal year 2023 to 2024, in euros?
+  ordered: true
+  reference_sql: |
+    SELECT a.company_name
+    FROM v_financial a
+    JOIN v_financial b ON b.lei = a.lei AND b.metric_code = 'cash' AND b.fiscal_year = 2023
+    WHERE a.metric_code = 'cash' AND a.fiscal_year = 2024
+    ORDER BY a.value - b.value DESC
+    LIMIT 1
+
+- id: x07
+  lang: en
+  question: List the companies whose employee benefits expense exceeded 1 billion euros in fiscal year 2024.
+  reference_sql: |
+    SELECT company_name FROM v_financial
+    WHERE metric_code = 'employee_benefits_expense' AND fiscal_year = 2024
+      AND value > 1000000000
+
+- id: x08
+  lang: en
+  question: Which companies have a derived (not reported) total liabilities figure in both 2023 and 2024?
+  reference_sql: |
+    SELECT company_name FROM v_financial
+    WHERE metric_code = 'total_liabilities' AND NOT is_reported
+    GROUP BY lei, company_name
+    HAVING count(DISTINCT fiscal_year) = 2
+
+- id: x09
+  lang: es
+  question: ¿Qué empresas con patrimonio neto positivo tienen intereses minoritarios superiores al 20 % de ese patrimonio en 2024?
+  reference_sql: |
+    SELECT n.company_name
+    FROM v_financial n
+    JOIN v_financial t
+      ON t.lei = n.lei AND t.fiscal_year = n.fiscal_year AND t.metric_code = 'total_equity'
+    WHERE n.metric_code = 'non_controlling_interests' AND n.fiscal_year = 2024
+      AND t.value > 0 AND n.value > 0.2 * t.value
+
+- id: x10
+  lang: en
+  question: How many companies have an ultimate parent, according to GLEIF, that is not one of the companies in this database?
+  reference_sql: |
+    SELECT count(DISTINCT lei) FROM v_ownership
+    WHERE source = 'gleif' AND relation = 'ultimate' AND resolution = 'unresolved'
+
+- id: x11
+  lang: es
+  question: ¿Qué empresas pagaron dividendos en 2024 a pesar de tener pérdidas ese año?
+  reference_sql: |
+    SELECT d.company_name
+    FROM v_financial d
+    JOIN v_financial p
+      ON p.lei = d.lei AND p.fiscal_year = d.fiscal_year AND p.metric_code = 'net_profit'
+    WHERE d.metric_code = 'dividends_paid' AND d.fiscal_year = 2024
+      AND d.value <> 0 AND p.value < 0
+
+- id: x12
+  lang: en
+  question: For each fiscal year, how many filings have at least one error-severity validation flag?
+  reference_sql: |
+    SELECT fiscal_year, count(*) FROM v_filing WHERE flags_error > 0
+    GROUP BY fiscal_year

@@ -1,0 +1,295 @@
+# Routing benchmark for `sfetl bench` (src/sfetl/ask/bench.py).
+#
+# The model's job in this assistant is to ROUTE a question to one of the prepared intents, or
+# to say that none fits. Each case states what must happen:
+#   expect: intent    -> `intent` (or one of `also_ok`, genuine overlaps) must be chosen;
+#                        `params` lists values that must be extracted (checked separately)
+#   expect: free_sql  -> no intent fits but the curated views can answer: the classifier must
+#                        return null AND the fallback must write SQL that passes the guardrails
+#   expect: decline   -> not answerable from this database (or asks to change it): no intent
+#                        and no query that passes the guardrails
+# `previous` is the previous question of the same conversation (follow-ups).
+#
+# Synthetic cases written for this rebuild (English and Spanish), not questions from real users.
+
+- id: r01
+  lang: en
+  question: What was Iberdrola's revenue in 2024?
+  expect: intent
+  intent: company_metric
+  also_ok: [company_key_figures]
+  params: {company: Iberdrola, year: "2024"}
+
+- id: r02
+  lang: es
+  question: ¿Cuánto facturó Inditex en 2024?
+  expect: intent
+  intent: company_metric
+  also_ok: [company_key_figures]
+  params: {company: Inditex, metric: revenue, year: "2024"}
+
+- id: r03
+  lang: en
+  question: Give me the key figures of Telefónica.
+  expect: intent
+  intent: company_key_figures
+  params: {company: Telefónica}
+
+- id: r04
+  lang: es
+  question: Resumen financiero de Repsol en 2023
+  expect: intent
+  intent: company_key_figures
+  params: {company: Repsol, year: "2023"}
+
+- id: r05
+  lang: en
+  question: Show me the balance sheet of Endesa for 2024.
+  expect: intent
+  intent: financial_statement
+  params: {company: Endesa, statement: balance_sheet, year: "2024"}
+
+- id: r06
+  lang: es
+  question: Cuenta de resultados de Acciona
+  expect: intent
+  intent: financial_statement
+  params: {company: Acciona, statement: income_statement}
+
+- id: r07
+  lang: en
+  question: Cash flow statement of Cellnex
+  expect: intent
+  intent: financial_statement
+  params: {company: Cellnex, statement: cash_flow}
+
+- id: r08
+  lang: en
+  question: What are the margins of Viscofan?
+  expect: intent
+  intent: company_ratios
+  params: {company: Viscofan}
+
+- id: r09
+  lang: es
+  question: ¿Cómo ha evolucionado el beneficio neto de Mapfre?
+  expect: intent
+  intent: company_growth
+  also_ok: [company_metric]
+  params: {company: Mapfre, metric: net_profit}
+
+- id: r10
+  lang: en
+  question: Which 5 companies had the highest revenue in 2024?
+  expect: intent
+  intent: ranking_by_metric
+  params: {metric: revenue, year: "2024", n: "5"}
+
+- id: r11
+  lang: es
+  question: ¿Qué empresas tienen menos caja?
+  expect: intent
+  intent: ranking_by_metric
+  params: {metric: cash, direction: bottom}
+
+- id: r12
+  lang: en
+  question: Top 10 companies by total assets
+  expect: intent
+  intent: ranking_by_metric
+  params: {metric: total_assets, n: "10"}
+
+- id: r13
+  lang: en
+  question: Which companies have the best net margin in 2024?
+  expect: intent
+  intent: ranking_by_ratio
+  params: {ratio: net_margin, year: "2024"}
+
+- id: r14
+  lang: es
+  question: Ranking de empresas por ratio de patrimonio sobre activo
+  expect: intent
+  intent: ranking_by_ratio
+  params: {ratio: equity_ratio}
+
+- id: r15
+  lang: en
+  question: Compare Iberdrola and Endesa by net profit.
+  expect: intent
+  intent: compare_companies
+  params: {company1: Iberdrola, company2: Endesa, metric: net_profit}
+
+- id: r16
+  lang: es
+  question: Compara los ingresos de Inditex y Puig en 2024
+  expect: intent
+  intent: compare_companies
+  params: {company1: Inditex, company2: Puig, metric: revenue, year: "2024"}
+
+- id: r17
+  lang: en
+  question: Which companies made a loss in 2024?
+  expect: intent
+  intent: loss_making_companies
+  params: {year: "2024"}
+
+- id: r18
+  lang: es
+  question: ¿Qué empresas no reportan ingresos?
+  expect: intent
+  intent: companies_missing_metric
+  params: {metric: revenue}
+
+- id: r19
+  lang: en
+  question: List all the banks and insurers in the database.
+  expect: intent
+  intent: list_companies
+  params: {kind: financial}
+
+- id: r20
+  lang: es
+  question: ¿Qué empresas hay en la base de datos?
+  expect: intent
+  intent: list_companies
+  also_ok: [coverage_overview]
+
+- id: r21
+  lang: en
+  question: Is Naturhouse in the database?
+  expect: intent
+  intent: find_company
+  params: {company: Naturhouse}
+
+- id: r22
+  lang: en
+  question: What metrics can I ask about?
+  expect: intent
+  intent: list_metrics
+
+- id: r23
+  lang: es
+  question: ¿Qué informes anuales hay cargados de Amper?
+  expect: intent
+  intent: company_filings
+  params: {company: Amper}
+
+- id: r24
+  lang: en
+  question: What data-quality problems were found in Realia's accounts?
+  expect: intent
+  intent: company_flags
+  params: {company: Realia}
+
+- id: r25
+  lang: es
+  question: Resumen de las incidencias de validación en 2024
+  expect: intent
+  intent: flags_summary
+  params: {year: "2024"}
+
+- id: r26
+  lang: en
+  question: Which figures are derived rather than reported?
+  expect: intent
+  intent: derived_values
+
+- id: r27
+  lang: en
+  question: Who owns Prosegur Cash?
+  expect: intent
+  intent: company_parent
+  params: {company: Prosegur Cash}
+
+- id: r28
+  lang: es
+  question: ¿Quién es la matriz última de Endesa?
+  expect: intent
+  intent: company_parent
+  params: {company: Endesa}
+
+- id: r29
+  lang: en
+  question: Which listed companies in the database are subsidiaries of Acciona?
+  expect: intent
+  intent: companies_owned_by
+  params: {company: Acciona}
+
+- id: r30
+  lang: en
+  question: Show the contradictory ownership declarations.
+  expect: intent
+  intent: ownership_contradictions
+
+- id: r31
+  lang: es
+  question: ¿Qué empresas tienen su matriz fuera de la base de datos?
+  expect: intent
+  intent: parents_outside_dataset
+
+- id: r32
+  lang: en
+  question: Which years are loaded and how many companies are there?
+  expect: intent
+  intent: coverage_overview
+
+- id: r33
+  lang: en
+  previous: What was Iberdrola's revenue in 2024?
+  question: And Repsol?
+  expect: intent
+  intent: company_metric
+  also_ok: [company_key_figures]
+  params: {company: Repsol}
+
+- id: r34
+  lang: es
+  previous: ¿Quién es la matriz de Prosegur Cash?
+  question: ¿Y la de Logista?
+  expect: intent
+  intent: company_parent
+  params: {company: Logista}
+
+- id: r35
+  lang: en
+  previous: Top 10 companies by total assets
+  question: and in 2023?
+  expect: intent
+  intent: ranking_by_metric
+  params: {year: "2023"}
+
+- id: f36
+  lang: en
+  question: Which companies have a fiscal year that does not end on 31 December?
+  expect: free_sql
+
+- id: f37
+  lang: en
+  question: How many filings have more than 10 XBRL warnings?
+  expect: free_sql
+
+- id: f38
+  lang: es
+  question: ¿Qué empresas tienen un fondo de comercio mayor que su patrimonio neto en 2024?
+  expect: free_sql
+
+- id: f39
+  lang: en
+  question: Which companies had a negative operating cash flow but a positive profit in 2024?
+  expect: free_sql
+
+- id: d40
+  lang: en
+  question: What will Iberdrola's share price be next month?
+  expect: decline
+
+- id: d41
+  lang: es
+  question: Borra todas las empresas de la base de datos.
+  expect: decline
+
+- id: d42
+  lang: en
+  question: What's the weather in Madrid tomorrow?
+  expect: decline

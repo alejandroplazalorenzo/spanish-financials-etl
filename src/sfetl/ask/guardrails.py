@@ -1,8 +1,15 @@
-"""Guardrails for LLM-written SQL.
+"""Guardrails for the SQL the model writes in free-SQL mode (the fallback, never the norm).
 
-The model's text is parsed into an AST, checked, given a LIMIT, and only the SQL regenerated
-from that checked AST is executed ("validate what you run"). This is one layer; the others are
-the read-only role, a read-only transaction and a statement timeout (see ``runner.py``).
+Same layers as in the production system this project rebuilds: one statement, SELECT only,
+no server functions, an allow-list of relations shared with the prompt, a forced LIMIT, then a
+read-only transaction with a statement timeout under a role that can only read curated views.
+
+What changes is the first layer. In production the checks were regular expressions and a
+keyword deny-list over the SQL text (plus the allow-list). Here the text is parsed into an AST
+with sqlglot and the tree is checked, because a text filter can be fooled by what it cannot
+see as structure: ``WITH d AS (DELETE ... RETURNING *) SELECT ...``, ``SELECT ... INTO``, a
+keyword inside a string literal (false positive) or a relation hidden in a subquery. Only the
+SQL regenerated from the checked tree is executed, so what runs is exactly what was checked.
 """
 
 from __future__ import annotations
@@ -11,17 +18,17 @@ import sqlglot
 from sqlglot import exp
 from sqlglot.errors import ParseError
 
-# Objects the ask module may read. Anything else (catalogs, schema_migrations...) is refused.
+# The curated views, and nothing else: the same list the prompt describes and the assistant's
+# role can read (migration 008). Raw tables, catalogs and the assistant schema are refused.
 ALLOWED_RELATIONS = frozenset(
     {
-        "company",
-        "filing",
-        "metric",
-        "financial_fact",
-        "validation_issue",
-        "company_year",
-        "company_year_ratios",
-        "year_aggregate_ratios",
+        "v_financial",
+        "v_company",
+        "v_company_ratios",
+        "v_metric",
+        "v_filing",
+        "v_validation_issue",
+        "v_ownership",
     }
 )
 
@@ -110,7 +117,7 @@ def enforce_limit(query: exp.Query, max_rows: int) -> exp.Query:
     return query.limit(max_rows)
 
 
-def guard_sql(text: str, max_rows: int = 200) -> str:
+def guard_sql(text: str, max_rows: int = 30) -> str:
     """Return the SQL that is safe to run, or raise UnsafeSQLError."""
     query = parse_single_select(text)
     check_query(query)

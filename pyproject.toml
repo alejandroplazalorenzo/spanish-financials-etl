@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spanish-financials-etl"
-version = "0.1.0"
-description = "ETL from ESEF (xBRL-JSON) annual reports of Spanish listed companies to PostgreSQL, with validation and a guarded NL-to-SQL module."
+version = "0.2.0"
+description = "ETL from ESEF (xBRL-JSON) annual reports of Spanish listed companies to PostgreSQL, with post-load validation, ownership structure and an intents-first assistant."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Alejandro Plaza Lorenzo" }]
@@ -16,6 +16,7 @@ dependencies = [
     "PyYAML>=6.0",
     "sqlglot>=30.19,<31",
     "truststore>=0.9",
+    "jsonschema>=4.20",
 ]
 
 [project.optional-dependencies]
